@@ -1,0 +1,22 @@
+<?php
+
+declare(strict_types=1);
+
+namespace PORM\SQL\AST\Node;
+
+
+class UnaryExpression extends Expression {
+
+    /** @var string */
+    public $operator;
+
+    /** @var Expression */
+    public $argument;
+
+
+    public function __construct(string $operator, Expression $argument) {
+        $this->operator = $operator;
+        $this->argument = $argument;
+    }
+
+}

@@ -1,0 +1,21 @@
+{
+    "name": "jahudka/porm",
+    "type": "library",
+    "license": "MIT",
+    "description": "Yet another PHP ORM",
+    "require": {
+        "php": "~7.1",
+        "nette/tokenizer": "^2.3"
+    },
+    "require-dev": {
+        "nette/di": "^2.4",
+        "tracy/tracy": "^2.4",
+        "nette/robot-loader": "^3.0",
+        "symfony/console": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "PORM\\": "src/"
+        }
+    }
+}
