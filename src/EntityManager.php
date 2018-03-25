@@ -304,7 +304,7 @@ class EntityManager {
 
 
     public function nativeQuery(string $query, ?array $parameters = null) : ?SQL\ResultSet {
-        return $this->connection->query($query, $this->mapper->convertToDb($parameters));
+        return $this->connection->query($query, $parameters ? $this->mapper->convertToDb($parameters) : null);
     }
 
 
