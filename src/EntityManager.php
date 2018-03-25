@@ -526,7 +526,7 @@ class EntityManager {
 
 
     private function exec(SQL\Query $query) : ?SQL\ResultSet {
-        $result = $this->connection->query($query->getSql(), $query->getParameters());
+        $result = $this->nativeQuery($query->getSql(), $query->getParameters());
         $result->setFieldMap($query->getResultMap());
         return $result;
     }
