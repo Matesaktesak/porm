@@ -107,7 +107,7 @@ class Builder {
     public function buildUpdateQuery(Entity $meta, ?string $alias = null, array $data, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\UpdateQuery {
         $query = new Node\UpdateQuery();
         $query->table = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), $alias);
-        $query->data = $this->buildAssignmentExpressionList($meta, $data);
+        $query->data = $this->buildAssignmentExpressionList($meta, $data, $alias);
         $this->applyCommonClauses($query, $where, $orderBy, $limit, $offset);
         return $query;
     }
@@ -250,18 +250,19 @@ class Builder {
     }
 
 
-    private function buildAssignmentExpressionList(Entity $meta, ?array $data) : array {
+    private function buildAssignmentExpressionList(Entity $meta, ?array $data, ?string $alias = null) : array {
         if (!$data) {
             return [];
         }
 
         $expressions = [];
+        $alias = $alias ? $alias . '.' : '';
 
         foreach ($data as $prop => $value) {
             $info = $meta->hasProperty($prop) ? $meta->getPropertyInfo($prop) : null;
 
             $expressions[] = new Node\AssignmentExpression(
-                new Node\Identifier('_o.' . $prop),
+                new Node\Identifier($alias . $prop),
                 $this->sanitizeValue($value, $info['type'] ?? null, $info['nullable'] ?? null)
             );
         }
