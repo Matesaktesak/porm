@@ -34,13 +34,14 @@ class Builder {
 
         if ($onlyCount) {
             $id = $meta->getSingleIdentifierProperty() ?: '*';
-            $fields = ['_count' => new Expression('COUNT(_root.' . $id . ')')];
+            $fields = ['_count' => new Expression('COUNT(_o.' . $id . ')')];
         } else {
             $fields = null;
         }
 
         $query = $this->buildSelectQuery(
             $meta,
+            '_o',
             $fields,
             $lookup->getWhere(),
             $lookup->getOrderBy(),
@@ -48,7 +49,7 @@ class Builder {
             $lookup->getOffset()
         );
 
-        $this->joinRequiredRelations($query, $meta, $lookup->getRelations());
+        $this->joinRequiredRelations($query, $meta, '_o', $lookup->getRelations());
 
         return $query;
     }
@@ -56,6 +57,7 @@ class Builder {
     public function buildLookupUpdateQuery(Lookup $lookup, array $data) : Node\UpdateQuery {
         return $this->buildUpdateQuery(
             $lookup->getEntityMetadata(),
+            '_o',
             $data,
             $lookup->getWhere(),
             $lookup->getOrderBy(),
@@ -75,15 +77,15 @@ class Builder {
     }
 
 
-    public function buildSelectQuery(Entity $meta, ?array $fields = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\SelectQuery {
+    public function buildSelectQuery(Entity $meta, ?string $alias = null, ?array $fields = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\SelectQuery {
         $query = new Node\SelectQuery();
-        $query->from[] = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), '_root');
+        $query->from[] = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), $alias);
 
         if (!$fields) {
             $fields = $meta->getProperties();
         }
 
-        $query->fields = $this->buildResultFields($fields);
+        $query->fields = $this->buildResultFields($fields, $alias);
         $this->applyCommonClauses($query, $where, $orderBy, $limit, $offset);
         return $query;
     }
@@ -102,98 +104,22 @@ class Builder {
         return $query;
     }
 
-    public function buildUpdateQuery(Entity $meta, array $data, ?array $where = null, ?array $orderBy, ?int $limit = null, ?int $offset = null) : Node\UpdateQuery {
+    public function buildUpdateQuery(Entity $meta, ?string $alias = null, array $data, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\UpdateQuery {
         $query = new Node\UpdateQuery();
-        $query->table = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), '_root');
+        $query->table = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), $alias);
         $query->data = $this->buildAssignmentExpressionList($meta, $data);
         $this->applyCommonClauses($query, $where, $orderBy, $limit, $offset);
         return $query;
     }
 
-    public function buildDeleteQuery(Entity $meta, ?array $where = null, ?array $orderBy, ?int $limit = null, ?int $offset = null) : Node\DeleteQuery {
+    public function buildDeleteQuery(Entity $meta, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\DeleteQuery {
         $query = new Node\DeleteQuery();
         $query->from = new Node\TableReference($meta->getEntityClass());
         $this->applyCommonClauses($query, $where, $orderBy, $offset, $limit);
         return $query;
     }
 
-
-    private function buildResultFields(array $fields) : array {
-        $resultFields = [];
-
-        foreach ($fields as $alias => $value) { /** @var Expression|string $value */
-            if ($value instanceof Expression) {
-                $value = $this->extractExpression($value);
-            } else {
-                $value = new Node\Identifier('_root.' . $value);
-            }
-
-            $resultFields[] = new Node\ResultField($value, is_numeric($alias) ? null : $alias);
-        }
-
-        return $resultFields;
-    }
-
-
-
-    private function applyCommonClauses(Node\Query $query, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : void {
-        /** @var Node\SelectQuery|Node\UpdateQuery|Node\DeleteQuery $query */
-        $query->where = $this->buildConditionalExpression($where);
-        $query->orderBy = $this->buildOrderExpressionList($orderBy);
-        $query->limit = $limit !== null ? Node\Literal::int($limit) : null;
-        $query->offset = $offset !== null ? Node\Literal::int($offset) : null;
-    }
-
-
-
-    private function joinRequiredRelations(Node\SelectQuery $query, Entity $meta, array $relations) : void {
-        $id = $meta->getSingleIdentifierProperty();
-        $sub = 0;
-
-        if (!$id) {
-            return;
-        }
-
-        foreach (array_keys(array_filter($relations)) as $relation) {
-            if ($meta->hasRelation($relation)) {
-                $info = $meta->getRelationInfo($relation);
-                $relMeta = $this->metadataRegistry->get($info['target']);
-
-                if (!empty($info['collection'])) {
-                    if (!$relMeta->hasRelationTarget($meta->getEntityClass(), $relation)) {
-                        throw new InvalidQueryException("Unable to determine inverse relation parameters for relation '$relation' of entity {$meta->getEntityClass()}");
-                    }
-
-                    $prop = $relMeta->getRelationTarget($meta->getEntityClass(), $relation);
-                    $inv = $relMeta->getRelationInfo($prop);
-                    $alias = '_sub_' . $sub;
-
-                    $subq = new Node\SelectQuery();
-                    $subq->fields[] = new Node\ResultField(new Node\Identifier($alias . '.' . $inv['fk']), $alias . '_fk');
-                    $subq->from[] = new Node\TableExpression(new Node\TableReference($info['target']), $alias);
-                    $subq->groupBy[] = new Node\Identifier($alias . '.' . $inv['fk']);
-
-                    $join = new Node\JoinExpression(new Node\SubqueryExpression($subq), Node\JoinExpression::JOIN_INNER);
-                    $join->alias = new Node\Identifier('_rel_' . $sub);
-                    $join->condition = new Node\BinaryExpression(
-                        new Node\Identifier('_rel_' . $sub . '.' . $alias . '_fk'),
-                        '=',
-                        new Node\Identifier('_root.' . $id)
-                    );
-
-                    $query->from[] = $join;
-                    $sub++;
-                } else {
-                    $query->from[] = new Node\JoinExpression(new Node\TableReference($info['target']), Node\JoinExpression::JOIN_INNER);
-                }
-            } else {
-                throw new InvalidQueryException("Entity {$meta->getEntityClass()} has no relation '$relation'");
-            }
-        }
-    }
-
-
-    private function buildConditionalExpression(?array $conditions) : ?Node\Expression {
+    public function buildConditionalExpression(?array $conditions) : ?Node\Expression {
         if (!$conditions) {
             return null;
         }
@@ -247,6 +173,83 @@ class Builder {
     }
 
 
+    private function buildResultFields(array $fields, ?string $alias = null) : array {
+        $resultFields = [];
+        $alias = $alias ? $alias . '.' : '';
+
+        foreach ($fields as $as => $value) { /** @var Expression|string $value */
+            if ($value instanceof Expression) {
+                $value = $this->extractExpression($value);
+            } else {
+                $value = new Node\Identifier(strpos($value, '.') === false ? $alias . $value : $value);
+            }
+
+            $resultFields[] = new Node\ResultField($value, is_numeric($as) ? null : $as);
+        }
+
+        return $resultFields;
+    }
+
+
+
+    private function applyCommonClauses(Node\Query $query, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : void {
+        /** @var Node\SelectQuery|Node\UpdateQuery|Node\DeleteQuery $query */
+        $query->where = $this->buildConditionalExpression($where);
+        $query->orderBy = $this->buildOrderExpressionList($orderBy);
+        $query->limit = $limit !== null ? Node\Literal::int($limit) : null;
+        $query->offset = $offset !== null ? Node\Literal::int($offset) : null;
+    }
+
+
+
+    private function joinRequiredRelations(Node\SelectQuery $query, Entity $meta, ?string $alias = null, array $relations) : void {
+        $alias = $alias ? $alias . '.' : '';
+        $id = $meta->getSingleIdentifierProperty();
+        $sub = 0;
+
+        if (!$id) {
+            return;
+        }
+
+        foreach (array_keys(array_filter($relations)) as $relation) {
+            if ($meta->hasRelation($relation)) {
+                $info = $meta->getRelationInfo($relation);
+                $relMeta = $this->metadataRegistry->get($info['target']);
+
+                if (!empty($info['collection'])) {
+                    if (!$relMeta->hasRelationTarget($meta->getEntityClass(), $relation)) {
+                        throw new InvalidQueryException("Unable to determine inverse relation parameters for relation '$relation' of entity {$meta->getEntityClass()}");
+                    }
+
+                    $prop = $relMeta->getRelationTarget($meta->getEntityClass(), $relation);
+                    $inv = $relMeta->getRelationInfo($prop);
+                    $as = '_sub_' . $sub;
+
+                    $subq = new Node\SelectQuery();
+                    $subq->fields[] = new Node\ResultField(new Node\Identifier($as . '.' . $inv['fk']), $as . '_fk');
+                    $subq->from[] = new Node\TableExpression(new Node\TableReference($info['target']), $as);
+                    $subq->groupBy[] = new Node\Identifier($as . '.' . $inv['fk']);
+
+                    $join = new Node\JoinExpression(new Node\SubqueryExpression($subq), Node\JoinExpression::JOIN_INNER);
+                    $join->alias = new Node\Identifier('_rel_' . $sub);
+                    $join->condition = new Node\BinaryExpression(
+                        new Node\Identifier('_rel_' . $sub . '.' . $as . '_fk'),
+                        '=',
+                        new Node\Identifier($alias . $id)
+                    );
+
+                    $query->from[] = $join;
+                    $sub++;
+                } else {
+                    $query->from[] = new Node\JoinExpression(new Node\TableReference($info['target']), Node\JoinExpression::JOIN_INNER);
+                }
+            } else {
+                throw new InvalidQueryException("Entity {$meta->getEntityClass()} has no relation '$relation'");
+            }
+        }
+    }
+
+
     private function buildAssignmentExpressionList(Entity $meta, ?array $data) : array {
         if (!$data) {
             return [];
@@ -258,7 +261,7 @@ class Builder {
             $info = $meta->hasProperty($prop) ? $meta->getPropertyInfo($prop) : null;
 
             $expressions[] = new Node\AssignmentExpression(
-                new Node\Identifier('_root.' . $prop),
+                new Node\Identifier('_o.' . $prop),
                 $this->sanitizeValue($value, $info['type'] ?? null, $info['nullable'] ?? null)
             );
         }

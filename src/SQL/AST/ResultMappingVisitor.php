@@ -27,29 +27,32 @@ class ResultMappingVisitor implements IVisitor {
         /** @var Node\ResultField $node */
         $query = $context->getClosestQueryNode();
 
-        if ($node->value instanceof Node\Identifier) {
-            if (strpos($node->value->value, '.') !== false) {
-                list (, $field) = explode('.', $node->value->value, 2);
+        if ($node->alias) {
+            $field = $alias = $node->alias->value;
+        } else {
+            if ($node->value instanceof Node\Identifier) {
+                $ident = $node->value;
+            } else if ($node->value instanceof Node\UnaryExpression && $node->value->argument instanceof Node\Identifier) {
+                $ident = $node->value->argument;
             } else {
-                $field = $node->value->value;
+                throw new InvalidQueryException("Missing alias for result field");
             }
 
-            if ($node->alias) {
-                $alias = $node->alias->value;
-            } else if ($node->value->hasMappingInfo()) {
-                $mapping = $node->value->getMappingInfo();
+            if (strpos($ident->value, '.') !== false) {
+                list (, $field) = explode('.', $ident->value, 2);
+            } else {
+                $field = $ident->value;
+            }
+
+            if ($ident->hasMappingInfo()) {
+                $mapping = $ident->getMappingInfo();
                 $alias = $mapping['property'];
             } else {
                 $alias = $field;
             }
-
-            $info = $node->value->hasTypeInfo() ? $node->value->getTypeInfo() : null;
-        } else if ($node->alias) {
-            $field = $alias = $node->alias->value;
-        } else {
-            throw new InvalidQueryException("Missing alias for result field");
         }
 
+        $info = $node->value instanceof Node\Identifier && $node->value->hasTypeInfo() ? $node->value->getTypeInfo() : null;
         $query->mapResultField($field, $alias, $info['type'] ?? null, $info['nullable'] ?? null);
     }
 

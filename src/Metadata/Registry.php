@@ -7,17 +7,17 @@ namespace PORM\Metadata;
 
 class Registry {
 
-    /** @var Provider */
     private $provider;
 
-    /** @var array */
     private $namespaces;
+
 
     /** @var Entity[] */
     private $meta = [];
 
-    /** @var array */
     private $classMap = [];
+
+    private $classMapAuthoritative = false;
 
 
     public function __construct(Provider $provider, ?array $namespaces = null) {
@@ -34,7 +34,7 @@ class Registry {
 
     public function has(string $entityClass) : bool {
         $entityClass = $this->normalizeEntityClass($entityClass);
-        return isset($this->meta[$entityClass]) || class_exists($entityClass);
+        return isset($this->meta[$entityClass]) || !$this->classMapAuthoritative && class_exists($entityClass);
     }
 
 

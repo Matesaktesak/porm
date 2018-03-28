@@ -87,7 +87,7 @@ class Translator {
         return new Query(
             $sql,
             $query->getParameterMap(),
-            $query->getResultFields()
+            $query->getResultMap()
         );
     }
 

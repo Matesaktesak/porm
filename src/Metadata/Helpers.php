@@ -16,6 +16,9 @@ class Helpers {
 
         if (isset($annotations['Table'])) {
             $meta['tableName'] = $annotations['Table'][0] ?? $annotations['Table']['name'] ?? '';
+        } else if (isset($annotations['View'])) {
+            $meta['tableName'] = $annotations['View'][0] ?? $annotations['View']['name'] ?? '';
+            $meta['readonly'] = true;
         }
 
         if (empty($meta['tableName'])) {
@@ -34,6 +37,7 @@ class Helpers {
         }
 
         $meta += [
+            'readonly' => false,
             'properties' => [],
             'relations' => [],
             'aggregateProperties' => [],

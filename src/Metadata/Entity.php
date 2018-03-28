@@ -16,6 +16,9 @@ class Entity {
     /** @var string */
     private $tableName;
 
+    /** @var bool */
+    private $readonly;
+
     /** @var array */
     private $properties;
 
@@ -51,6 +54,7 @@ class Entity {
         string $entityClass,
         ?string $managerClass,
         string $tableName,
+        bool $readonly,
         array $properties,
         array $relations,
         array $aggregateProperties,
@@ -63,6 +67,7 @@ class Entity {
         $this->entityClass = $entityClass;
         $this->managerClass = $managerClass;
         $this->tableName = $tableName;
+        $this->readonly = $readonly;
         $this->properties = $properties;
         $this->relations = $relations;
         $this->aggregateProperties = $aggregateProperties;
@@ -104,6 +109,10 @@ class Entity {
 
     public function getTableName() : string {
         return $this->tableName;
+    }
+
+    public function isReadonly() : bool {
+        return $this->readonly;
     }
 
     public function getIdentifierProperties() : array {

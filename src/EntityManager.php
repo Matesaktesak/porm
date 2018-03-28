@@ -47,10 +47,11 @@ class EntityManager {
     }
 
 
-    public function get(Metadata\Entity $meta, $id, bool $need = false) {
-        $ast = $this->queryBuilder->buildSelectQuery($meta, null, $this->mapper->extractRawIdentifier($meta, $id));
+    public function get($entity, $id, bool $need = false) {
+        $meta = $this->normalizeMeta($entity);
+        $ast = $this->queryBuilder->buildSelectQuery($meta, null, null, $this->mapper->extractRawIdentifier($meta, $id));
         $query = $this->translator->compile($ast);
-        $result = $this->exec($query);
+        $result = $this->execute($query);
 
         if ($result && ($row = $result->fetch())) {
             return $this->hydrateEntity($meta, $row);
@@ -63,20 +64,26 @@ class EntityManager {
 
 
 
-    public function find(Metadata\Entity $meta, ?array $where = null, $orderBy = null, ?int $limit = null, ?int $offset = null, ?string $associateBy = null) : Lookup {
-        return new Lookup($this, $meta, $where, $orderBy, $limit, $offset, $associateBy);
+    public function find($entity, ?array $where = null, $orderBy = null, ?int $limit = null, ?int $offset = null, ?string $associateBy = null) : Lookup {
+        return new Lookup($this, $this->normalizeMeta($entity), $where, $orderBy, $limit, $offset, $associateBy);
     }
 
-    public function findFirst(Metadata\Entity $meta, ?array $where = null, $orderBy = null) {
-        return $this->find($meta, $where, $orderBy)->first();
+    public function findFirst($entity, ?array $where = null, $orderBy = null) {
+        return $this->find($entity, $where, $orderBy)->first();
     }
 
 
 
-    public function persist(Metadata\Entity $meta, $entity) : self {
-        $id = $this->mapper->extractIdentifier($meta, $entity);
+    public function persist($entity, $object) : self {
+        $meta = $this->normalizeMeta($entity);
+
+        if ($meta->isReadonly()) {
+            throw new \InvalidArgumentException("Entity {$meta->getEntityClass()} is readonly");
+        }
+
+        $id = $this->mapper->extractIdentifier($meta, $object);
         $hash = implode('|', $id);
-        $data = $this->mapper->extract($meta, $entity, array_diff($meta->getProperties(), array_keys($id)));
+        $data = $this->mapper->extract($meta, $object, array_diff($meta->getProperties(), array_keys($id)));
         $orig = $this->identityMap[$meta->getEntityClass()][$hash]['data'] ?? [];
         $changeset = [];
 
@@ -110,11 +117,11 @@ class EntityManager {
             }
 
             try {
-                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::prePersist', $entity, $this);
+                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::prePersist', $object, $this);
 
                 $ast = $this->queryBuilder->buildInsertQuery($meta, $data);
                 $query = $this->translator->compile($ast);
-                $result = $this->exec($query);
+                $result = $this->execute($query);
 
                 if ($genProp) {
                     if ($platform->supportsReturningClause()) {
@@ -123,10 +130,10 @@ class EntityManager {
                         $id = $driver->getLastGeneratedValue($genPropInfo['generator']);
                     }
 
-                    $meta->getReflection($genProp)->setValue($entity, $id);
+                    $meta->getReflection($genProp)->setValue($object, $id);
                 }
 
-                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postPersist', $entity, $this);
+                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postPersist', $object, $this);
 
                 if ($started) {
                     $this->connection->commit();
@@ -144,13 +151,13 @@ class EntityManager {
             }
 
             try {
-                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::preUpdate', $entity, $this, $changeset);
+                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::preUpdate', $object, $this, $changeset);
 
-                $ast = $this->queryBuilder->buildUpdateQuery($meta, $data, $id);
+                $ast = $this->queryBuilder->buildUpdateQuery($meta, null, $data, $id);
                 $query = $this->translator->compile($ast);
-                $this->exec($query);
+                $this->execute($query);
 
-                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postUpdate', $entity, $this, $changeset);
+                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postUpdate', $object, $this, $changeset);
 
                 if ($started) {
                     $this->connection->commit();
@@ -167,21 +174,27 @@ class EntityManager {
         return $this;
     }
 
-    public function remove(Metadata\Entity $meta, $entity) : self {
+    public function remove($entity, $object) : self {
+        $meta = $this->normalizeMeta($entity);
+
+        if ($meta->isReadonly()) {
+            throw new \InvalidArgumentException("Entity {$meta->getEntityClass()} is readonly");
+        }
+
         if ($started = !$this->connection->inTransaction()) {
             $this->connection->beginTransaction();
         }
 
         try {
-            $this->eventDispatcher->dispatch($meta->getEntityClass() . '::preRemove', $entity, $this);
+            $this->eventDispatcher->dispatch($meta->getEntityClass() . '::preRemove', $object, $this);
 
-            $id = $this->mapper->extractIdentifier($meta, $entity);
+            $id = $this->mapper->extractIdentifier($meta, $object);
 
             $ast = $this->queryBuilder->buildDeleteQuery($meta, $id);
             $query = $this->translator->compile($ast);
-            $this->exec($query);
+            $this->execute($query);
 
-            $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postRemove', $entity, $this);
+            $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postRemove', $object, $this);
 
             if ($started) {
                 $this->connection->commit();
@@ -230,16 +243,24 @@ class EntityManager {
         $ast = $this->queryBuilder->buildLookupSelectQuery($lookup);
         $query = $this->translator->compile($ast);
 
-        $result = $this->exec($query);
+        $result = $this->execute($query);
         $meta = $lookup->getEntityMetadata();
+        $entities = array_map(function(array $row) use ($meta) { return $this->hydrateEntity($meta, $row); }, iterator_to_array($result));
+
+        if ($relations = $lookup->getRelations()) {
+            $this->loadRelations($meta, $entities, ... array_keys($relations));
+        }
+
+        if ($aggregate = $lookup->getAggregations()) {
+            $this->loadAggregation($meta, $entities, ... $aggregate);
+        }
 
         if ($associateBy = $lookup->getAssociateBy()) {
             $associateBy = preg_split('/\||(\[])/', $associateBy, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
-            $entities = [];
+            $root = [];
 
-            foreach ($result as $row) {
-                $entity = $this->hydrateEntity($meta, $row);
-                $cursor = &$entities;
+            foreach ($entities as $entity) {
+                $cursor = &$root;
 
                 foreach ($associateBy as $prop) {
                     if ($prop === '[]') {
@@ -253,11 +274,9 @@ class EntityManager {
                 unset($cursor);
             }
 
-            yield from $entities;
+            yield from $root;
         } else {
-            foreach ($result as $row) {
-                yield $this->hydrateEntity($meta, $row);
-            }
+            yield from $entities;
         }
     }
 
@@ -265,7 +284,7 @@ class EntityManager {
     public function countLookup(Lookup $lookup) : int {
         $ast = $this->queryBuilder->buildLookupSelectQuery($lookup, true);
         $query = $this->translator->compile($ast);
-        $result = $this->exec($query);;
+        $result = $this->execute($query);;
         $count = $result ? $result->fetchSingle() : null;
         return $count !== null ? (int) $count : 0;
     }
@@ -274,7 +293,7 @@ class EntityManager {
     public function updateLookup(Lookup $lookup, array $data) : int {
         $ast = $this->queryBuilder->buildLookupUpdateQuery($lookup, $data);
         $query = $this->translator->compile($ast);
-        $this->exec($query);
+        $this->execute($query);
         return $this->connection->getAffectedRows();
     }
 
@@ -282,8 +301,13 @@ class EntityManager {
     public function deleteLookup(Lookup $lookup) : int {
         $ast = $this->queryBuilder->buildLookupDeleteQuery($lookup);
         $query = $this->translator->compile($ast);
-        $this->exec($query);
+        $this->execute($query);
         return $this->connection->getAffectedRows();
+    }
+
+
+    public function createQueryBuilder($entity, ?string $alias = null) : QueryBuilder {
+        return new QueryBuilder($this->translator, $this->queryBuilder, $this->normalizeMeta($entity), $alias);
     }
 
 
@@ -299,7 +323,23 @@ class EntityManager {
             $query->setParameters($parameters);
         }
 
-        return $this->exec($query);
+        return $this->execute($query);
+    }
+
+    public function execute(SQL\Query $query) : ?SQL\ResultSet {
+        $result = $this->connection->query($query->getSql(), $this->mapper->convertToDb($query->getParameters(), $query->getParameterMap()));
+
+        if ($result) {
+            $map = $query->getResultMap();
+
+            $result->setRowProcessor(function (array $row) use ($map) {
+                return $this->mapper->convertFromDb($row, $map);
+            });
+
+            $result->setFieldMap(array_map(function (array $info) : string { return $info['alias']; }, $map));
+        }
+
+        return $result;
     }
 
 
@@ -322,10 +362,11 @@ class EntityManager {
             $new = true;
         }
 
-        $this->identityMap[$class][$hash]['data'] = $this->mapper->hydrate($meta, $entity, $data);
+        $this->identityMap[$class][$hash]['data'] = $data;
+        $this->mapper->hydrate($meta, $entity, $data);
 
         if ($new) {
-            $this->eventDispatcher->dispatch('postLoad', $meta->getEntityClass(), [$entity]);
+            $this->eventDispatcher->dispatch($class . '::postLoad', $entity);
         }
 
         return $entity;
@@ -365,6 +406,17 @@ class EntityManager {
             } else {
                 $this->loadAggregation($meta, $entities, $prop);
             }
+        }
+    }
+
+
+    private function normalizeMeta($entity) : Metadata\Entity {
+        if (is_string($entity)) {
+            return $this->metadataRegistry->get($entity);
+        } else if ($entity instanceof Metadata\Entity) {
+            return $entity;
+        } else {
+            throw new \InvalidArgumentException("Invalid argument, expected a string or an instance of " . Metadata\Entity::class);
         }
     }
 
@@ -495,7 +547,7 @@ class EntityManager {
 
         $fields = [
             '_id' => $inverse['fk'],
-            '_value' => new Expression($info['type'] . '(_root.' . $info['property'] . ')'),
+            '_value' => new Expression($info['type'] . '(_o.' . $info['property'] . ')'),
         ];
 
         $where = [
@@ -506,12 +558,12 @@ class EntityManager {
             $where[] = $info['where'];
         }
 
-        $ast = $this->queryBuilder->buildSelectQuery($target, $fields, $where);
-        $ast->groupBy[] = new SQL\AST\Node\Identifier('_root.' . $inverse['fk']);
+        $ast = $this->queryBuilder->buildSelectQuery($target, '_o', $fields, $where);
+        $ast->groupBy[] = new SQL\AST\Node\Identifier('_o.' . $inverse['fk']);
         $query = $this->translator->compile($ast);
         $result = [];
 
-        foreach ($this->exec($query) as $row) {
+        foreach ($this->execute($query) as $row) {
             $result[$row['_id']] = $row['_value'];
         }
 
@@ -522,13 +574,6 @@ class EntityManager {
             $id = $rid->getValue($entity);
             $ragg->setValue($entity, $result[$id] ?? 0);
         }
-    }
-
-
-    private function exec(SQL\Query $query) : ?SQL\ResultSet {
-        $result = $this->nativeQuery($query->getSql(), $query->getParameters());
-        $result->setFieldMap($query->getResultMap());
-        return $result;
     }
 
 }

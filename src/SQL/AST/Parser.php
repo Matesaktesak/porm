@@ -23,7 +23,7 @@ class Parser {
 
     public const PATTERNS = [
         self::T_KEYWORD => 'SELECT|FROM|(?:(?:LEFT|INNER)\s+)?JOIN|UNION|UPDATE|SET|INSERT|INTO|VALUES|DELETE|EXISTS|' .
-            'WHERE|GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT|OFFSET|RETURNING|AS|CASE\s+WHEN|THEN|ELSE|END|AND|OR|IS|' .
+            'WHERE|GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT|OFFSET|RETURNING|AS|CASE|WHEN|THEN|ELSE|END|AND|OR|IS|' .
             'LIKE|CONTAINS|(?:NOT\s+)?IN|NOT|DISTINCT|ASC|DESC|UNION(?:\s+ALL)',
         self::T_SYMBOL => '[<>!]=|[-+/*%=<>(),*]',
         self::T_LITERAL => 'TRUE|FALSE|NULL|(?:[1-9]\d+|\d)(?:\.\d+)?|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"',

@@ -90,7 +90,7 @@ class EntityFinder {
             return false;
         }
 
-        if (preg_match('~@(Table|Manager)[\s(]~', $reflection->getDocComment() ?: '')) {
+        if (preg_match('~@(Table|View|Manager)[\s(]~', $reflection->getDocComment() ?: '')) {
             return true;
         }
 

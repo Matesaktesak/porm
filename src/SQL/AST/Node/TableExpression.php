@@ -30,4 +30,20 @@ class TableExpression extends Node {
         ];
     }
 
+
+    public function setRelationInfo(string $from, string $property) : void {
+        $this->attributes['relation'] = [
+            'from' => $from,
+            'property' => $property,
+        ];
+    }
+
+    public function isRelation() : bool {
+        return isset($this->attributes['relation']);
+    }
+
+    public function getRelationInfo() : ?array {
+        return $this->attributes['relation'] ?? null;
+    }
+
 }

@@ -27,8 +27,15 @@ class Runner {
 
 
     private function runSqlMigration(string $path) : void {
+        $n = 1;
+
         foreach ($this->loadAndParseFile($path) as $stmt) {
-            $this->driver->query($stmt);
+            try {
+                $this->driver->query($stmt);
+                $n++;
+            } catch (\Throwable $e) {
+                throw new MigrationException("An exception occurred when executing statement #$n", 0, $e);
+            }
         }
     }
 
@@ -43,7 +50,12 @@ class Runner {
 
         /** @var IMigration $migration */
         $migration = new $class();
-        $migration->run($this->driver);
+
+        try {
+            $migration->run($this->driver);
+        } catch (\Throwable $e) {
+            throw new MigrationException("An exception occurred when executing migration", 0, $e);
+        }
     }
 
 

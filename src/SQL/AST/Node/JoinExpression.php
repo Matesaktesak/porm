@@ -17,33 +17,17 @@ class JoinExpression extends TableExpression {
     public $condition = null;
 
 
-    public function __construct(ITable $table, string $type) {
-        parent::__construct($table);
+    public function __construct(ITable $table, string $type, ?string $alias = null) {
+        parent::__construct($table, $alias);
         $this->type = $type;
     }
 
     public function getTraversableProperties() : array {
         return [
             'table' => false,
-            'condition' => false,
             'alias' => false,
+            'condition' => false,
         ];
-    }
-
-
-    public function setRelationInfo(string $from, string $property) : void {
-        $this->attributes['relation'] = [
-            'from' => $from,
-            'property' => $property,
-        ];
-    }
-
-    public function isRelation() : bool {
-        return isset($this->attributes['relation']);
-    }
-
-    public function getRelationInfo() : ?array {
-        return $this->attributes['relation'] ?? null;
     }
 
 }

@@ -11,6 +11,7 @@ use PORM\Migrations\Migration;
 use PORM\SQL\AST\Node as AST;
 use PORM\SQL\AST\Parser;
 use PORM\SQL\Expression;
+use PORM\SQL\InvalidQueryException;
 
 
 class Platform implements IPlatform {
@@ -355,15 +356,34 @@ class Platform implements IPlatform {
     private function formatASTFunctionCall(AST\FunctionCall $call) : string {
         $ucName = strtoupper($call->name);
 
-        switch ($ucName) {
-            case 'CURRENT_DATE':
-            case 'CURRENT_TIME':
-            case 'CURRENT_TIMESTAMP':
-                return $ucName;
-            default:
-                return $ucName . ($call->arguments ? $this->formatASTExpressionList($call->arguments) : '()');
+        if (method_exists(NativeFunctions::class, $ucName)) {
+            try {
+                [$expr, $args] = call_user_func_array([NativeFunctions::class, $ucName], $call->arguments->expressions);
+
+                if ($args) {
+                    $expr = vsprintf($expr, array_map(function($v) {
+                        return $v instanceof AST\Expression ? $this->formatASTExpression($v) : $v;
+                    }, $args));
+                }
+
+                return $expr;
+            } catch (\TypeError $e) {
+                $ns = preg_quote(substr(AST\Node::class, 0, -4));
+                $pattern = '~argument (\d+) passed to .+? must be (?:of the type|an instance of) (?:' . $ns . ')?(\S+), (?:instance of )?(?:' . $ns . ')?(\S+) given~i';
+
+                if (preg_match($pattern, $e->getMessage(), $m)) {
+                    throw new InvalidQueryException("Invalid argument #{$m[1]} passed when calling {$call->name}(), expected {$m[2]}, got {$m[1]}");
+                } else {
+                    throw new InvalidQueryException("Invalid argument passed when calling {$call->name}()");
+                }
+            } catch (\ArgumentCountError $e) {
+                throw new InvalidQueryException("Invalid call to {$call->name}(), too few arguments");
+            }
         }
+
+        return $ucName . ($call->arguments ? $this->formatASTExpressionList($call->arguments) : '()');
     }
+
 
     private function formatASTExpressionList(AST\ExpressionList $list) : string {
         return '(' . implode(', ', array_map(\Closure::fromCallable([$this, 'formatASTExpression']), $list->expressions)) . ')';
@@ -372,7 +392,8 @@ class Platform implements IPlatform {
     private function formatASTCaseExpression(AST\CaseExpression $expr) : string {
         return 'CASE '
             . implode(' ', array_map(\Closure::fromCallable([$this, 'formatASTCaseBranch']), $expr->branches))
-            . ($expr->else ? ' ELSE ' . $this->formatASTExpression($expr->else) : '');
+            . ($expr->else ? ' ELSE ' . $this->formatASTExpression($expr->else) : '')
+            . ' END';
     }
 
     private function formatASTCaseBranch(AST\CaseBranch $expr) : string {

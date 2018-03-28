@@ -74,7 +74,6 @@ class IdentifierResolverVisitor implements IVisitor {
             }
         }
 
-
         if (!$node->hasTypeInfo()) {
             $node->setTypeInfo($info['type'], $info['nullable']);
         }

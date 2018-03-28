@@ -84,7 +84,7 @@ class Driver implements IDriver {
             $stmt = @ibase_prepare($query);
 
             if ($stmt === false) {
-                throw new QueryException(ibase_errmsg() ?: 'Unknown Firebird error', ibase_errcode() ?: -1, $query, $parameters);
+                throw $this->createQueryException($query, $parameters);
             }
 
             $result = @ibase_execute($stmt, ... $parameters);
@@ -92,7 +92,7 @@ class Driver implements IDriver {
         }
 
         if ($result === false) {
-            throw new QueryException(ibase_errmsg() ?: 'Unknown Firebird error', ibase_errcode() ?: -1, $query, $parameters);
+            throw $this->createQueryException($query, $parameters);
         } else {
             return is_resource($result) ? new ResultSet($this, $result) : null;
         }
@@ -142,5 +142,22 @@ class Driver implements IDriver {
         $this->transaction = null;
     }
 
+
+
+    private function createQueryException(string $query, ?array $parameters = null) : QueryException {
+        $msg = ibase_errmsg();
+        $code = ibase_errcode() ?: -1;
+
+        if (!$msg) {
+            if ($err = error_get_last()) {
+                error_clear_last();
+                $msg = $err['message'];
+            } else {
+                $msg = 'Unknown Firebird error';
+            }
+        }
+
+        return new QueryException($msg, $code, $query, $parameters);
+    }
 
 }

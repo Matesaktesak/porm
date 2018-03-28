@@ -21,6 +21,8 @@ class EntityResolverVisitor implements IVisitor {
 
     public function getNodeTypes() : array {
         return [
+            Node\TableExpression::class,
+            Node\JoinExpression::class,
             Node\TableReference::class,
         ];
     }
@@ -31,11 +33,25 @@ class EntityResolverVisitor implements IVisitor {
     }
 
     public function enter(Node\Node $node, Context $context) : void {
-        /** @var Node\TableReference $node */
-        /** @var Node\TableExpression|Node\JoinExpression $expr */
-        $expr = $context->getParent(Node\TableExpression::class, Node\JoinExpression::class);
-        $query = $context->getClosestQueryNode();
+        if ($context->getNodeType() === Node\TableReference::class) {
+            if (empty($node->attributes['visited'])) {
+                /** @var Node\TableReference $node */
+                $this->visit($context->getClosestQueryNode(), $node, $context->getParent(Node\TableExpression::class, Node\JoinExpression::class));
+            }
+        } else {
+            /** @var Node\TableExpression|Node\JoinExpression $node */
+            if ($node->table instanceof Node\TableReference) {
+                $this->visit($context->getClosestQueryNode(), $node->table, $node);
+            }
+        }
+    }
 
+    public function leave(Node\Node $node, Context $context) : void {
+
+    }
+
+
+    private function visit(Node\Query $query, Node\TableReference $node, ?Node\TableExpression $expr = null) : void {
         if (strpos($node->name->value, '.')) {
             [$alias, $relation] = explode('.', $node->name->value, 2);
 
@@ -61,10 +77,7 @@ class EntityResolverVisitor implements IVisitor {
 
         $query->mapResource($this->extractFieldInfo($target), $expr->alias->value ?? null, $target->getEntityClass());
         $node->name->value = $target->getTableName();
-    }
-
-    public function leave(Node\Node $node, Context $context) : void {
-
+        $node->attributes['visited'] = true;
     }
 
 

@@ -62,18 +62,42 @@ abstract class Query extends Node {
             'type' => $type,
             'nullable' => $nullable,
         ];
+
+        $this->attributes['resultMap'][$field] = $alias;
     }
 
     public function hasResultField(string $alias) : bool {
         return isset($this->attributes['resultFields'][$alias]);
     }
 
+    public function hasMappedField(string $field) : bool {
+        return isset($this->attributes['resultMap'][$field]);
+    }
+
     public function getResultFieldInfo(string $alias) : array {
         return $this->attributes['resultFields'][$alias];
     }
 
+    public function getMappedFieldAlias(string $field) : string {
+        return $this->attributes['resultMap'][$field];
+    }
+
+    public function getMappedFieldInfo(string $field) : array {
+        return $this->attributes['resultFields'][$this->attributes['resultMap'][$field]];
+    }
+
     public function getResultFields() : array {
         return $this->attributes['resultFields'] ?? [];
+    }
+
+    public function getResultMap() : array {
+        return array_map(function(string $alias) : array {
+            return [
+                'alias' => $alias,
+                'type' => $this->attributes['resultFields'][$alias]['type'],
+                'nullable' => $this->attributes['resultFields'][$alias]['nullable'],
+            ];
+        }, $this->attributes['resultMap'] ?? []);
     }
 
     public function registerRequiredParameter(?string $key = null, ?string $type = null, ?bool $nullable = null) : void {

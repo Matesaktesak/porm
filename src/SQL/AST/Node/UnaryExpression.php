@@ -19,4 +19,11 @@ class UnaryExpression extends Expression {
         $this->argument = $argument;
     }
 
+    public function getTraversableProperties() : array {
+        return [
+            'argument' => false,
+        ];
+    }
+
+
 }

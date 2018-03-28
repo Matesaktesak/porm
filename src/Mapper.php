@@ -73,27 +73,25 @@ class Mapper {
 
     public function hydrate(Metadata\Entity $meta, $entity, array $data) : array {
         foreach ($data as $prop => $value) {
-            $info = $meta->getPropertyInfo($prop);
-            $value = $data[$prop] = $this->convertFromDbType($value, $info['type'], !empty($info['nullable']));
             $meta->getReflection($prop)->setValue($entity, $value);
         }
 
         return $data;
     }
 
-    public function convertFromDb(array $data, ?Metadata\Entity $meta = null) : array {
+    public function convertFromDb(array $data, ?array $info = null) : array {
         foreach ($data as $key => $value) {
-            $info = $meta && !is_numeric($key) && $meta->hasProperty($key) ? $meta->getPropertyInfo($key) : null;
-            $data[$key] = $this->convertFromDbType($value, $info['type'] ?? null, $info['nullable'] ?? null);
+            $nfo = $info[$key] ?? null;
+            $data[$key] = $this->convertFromDbType($value, $nfo['type'] ?? null, $nfo['nullable'] ?? null);
         }
 
         return $data;
     }
 
-    public function convertToDb(array $data, Metadata\Entity $meta = null) : array {
+    public function convertToDb(array $data, ?array $info = null) : array {
         foreach ($data as $key => $value) {
-            $info = $meta && !is_numeric($key) && $meta->hasProperty($key) ? $meta->getPropertyInfo($key) : null;
-            $data[$key] = $this->convertToDbType($value, $info['type'] ?? null, $info['nullable'] ?? null);
+            $nfo = $info[$key] ?? null;
+            $data[$key] = $this->convertToDbType($value, $nfo['type'] ?? null, $nfo['nullable'] ?? null);
         }
 
         return $data;

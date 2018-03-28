@@ -14,6 +14,8 @@ class ResultSet implements \IteratorAggregate {
 
     private $resource;
 
+    private $rowProcessor = null;
+
     private $fieldMap = null;
 
     private $fetchedRows = 0;
@@ -24,6 +26,10 @@ class ResultSet implements \IteratorAggregate {
         $this->resource = $resource;
     }
 
+
+    public function setRowProcessor(callable $processor) : void {
+        $this->rowProcessor = $processor;
+    }
 
     public function setFieldMap(array $map) : void {
         $this->fieldMap = $map;
@@ -36,6 +42,10 @@ class ResultSet implements \IteratorAggregate {
 
         if ($row !== null) {
             $this->fetchedRows++;
+
+            if ($this->rowProcessor) {
+                $row = call_user_func($this->rowProcessor, $row);
+            }
 
             if ($this->fieldMap) {
                 $row = $this->mapRowKeys($row, $this->fieldMap);
@@ -85,8 +95,8 @@ class ResultSet implements \IteratorAggregate {
     private function mapRowKeys(array $row, array $map) : array {
         $mapped = [];
 
-        foreach ($map as $prop => $info) {
-            $mapped[$prop] = $row[$info['field']];
+        foreach ($row as $field => $value) {
+            $mapped[$map[$field] ?? $field] = $value;
         }
 
         return $mapped;
