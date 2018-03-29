@@ -97,6 +97,11 @@ class EntityManager {
 
         $id = array_filter($id, function($v) { return $v !== null; });
 
+        if (!empty($id) && !$meta->hasGeneratedProperty() && !isset($this->identityMap[$meta->getEntityClass()][$hash])) {
+            $data = $id + $data;
+            $id = null;
+        }
+
         if (empty($id)) {
             $driver = $this->connection->getDriver();
             $platform = $this->connection->getPlatform();
@@ -311,7 +316,7 @@ class EntityManager {
     }
 
 
-    public function stmt(string $sql, ?array $parameters = null) : SQL\Expression {
+    public function expr(string $sql, ?array $parameters = null) : SQL\Expression {
         return new SQL\Expression($sql, $parameters);
     }
 
@@ -370,6 +375,36 @@ class EntityManager {
         }
 
         return $entity;
+    }
+
+
+    public function isAttached(Metadata\Entity $meta, $entity) : bool {
+        $id = $this->mapper->extractIdentifier($meta, $entity);
+        $hash = implode('|', $id);
+        return isset($this->identityMap[$meta->getEntityClass()][$hash]);
+    }
+
+    public function attach(Metadata\Entity $meta, $entity) : void {
+        $id = $this->mapper->extractIdentifier($meta, $entity);
+        $hash = implode('|', $id);
+        $class = $meta->getEntityClass();
+
+        if (isset($this->identityMap[$class][$hash])) {
+            if ($this->identityMap[$class][$hash]['object'] !== $entity) {
+                throw new Exception("Identity map violation: another instance of entity {$class}#{$hash} is already attached");
+            }
+        } else {
+            $this->identityMap[$class][$hash] = [
+                'object' => $entity,
+                'data' => [],
+            ];
+        }
+    }
+
+    public function detach(Metadata\Entity $meta, $entity) : void {
+        $id = $this->mapper->extractIdentifier($meta, $entity);
+        $hash = implode('|', $id);
+        unset($this->identityMap[$meta->getEntityClass()][$hash]);
     }
 
 
