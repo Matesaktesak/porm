@@ -35,6 +35,10 @@ class IdentifierResolverVisitor implements IVisitor {
             $alias = null;
         }
 
+        if ($property === '*') {
+            return;
+        }
+
         if ($alias) {
             /** @var Node\Query $query */
             $query = $context->getClosestNodeMatching(function(Node\Node $node, string $type) use ($alias) : bool {
