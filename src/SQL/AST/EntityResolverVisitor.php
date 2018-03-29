@@ -6,7 +6,7 @@ namespace PORM\SQL\AST;
 
 use PORM\Metadata\Entity;
 use PORM\Metadata\Registry;
-use PORM\SQL\InvalidQueryException;
+use PORM\Exceptions\InvalidQueryException;
 
 
 class EntityResolverVisitor implements IVisitor {

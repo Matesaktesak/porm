@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace PORM\Drivers\Firebird;
 
-use PORM\ConnectionException;
-use PORM\Drivers\DriverException;
+use PORM\Exceptions\ConnectionException;
+use PORM\Exceptions\ConstraintViolationException;
+use PORM\Exceptions\DriverException;
 use PORM\Drivers\IDriver;
-use PORM\SQL\QueryException;
+use PORM\Exceptions\ForeignKeyConstraintViolationException;
+use PORM\Exceptions\QueryException;
+use PORM\Exceptions\UniqueConstraintViolationException;
 use PORM\SQL\ResultSet;
 
 
@@ -157,7 +160,15 @@ class Driver implements IDriver {
             }
         }
 
-        return new QueryException($msg, $code, $query, $parameters);
+        if (preg_match('~^violation of (.+?) constraint~i', $msg, $m)) {
+            $class = lcfirst($m[1]) === 'f' ? ForeignKeyConstraintViolationException::class : UniqueConstraintViolationException::class;
+        } else if (preg_match('~^validation error for column~i', $msg)) {
+            $class = ConstraintViolationException::class;
+        } else {
+            $class = QueryException::class;
+        }
+
+        return new $class($msg, $code, $query, $parameters);
     }
 
 }

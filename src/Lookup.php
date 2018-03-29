@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace PORM;
 
 
-use PORM\SQL\NoResultException;
+use PORM\Exceptions\NoResultException;
 
 class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
 

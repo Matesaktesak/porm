@@ -56,7 +56,7 @@ class EntityManager {
         if ($result && ($row = $result->fetch())) {
             return $this->hydrateEntity($meta, $row);
         } else if ($need) {
-            throw new SQL\NoResultException();
+            throw new Exceptions\NoResultException();
         } else {
             return null;
         }
@@ -195,7 +195,7 @@ class EntityManager {
 
             $id = $this->mapper->extractIdentifier($meta, $object);
 
-            $ast = $this->queryBuilder->buildDeleteQuery($meta, $id);
+            $ast = $this->queryBuilder->buildDeleteQuery($meta, null, $id);
             $query = $this->translator->compile($ast);
             $this->execute($query);
 
@@ -510,46 +510,44 @@ class EntityManager {
 
             if (!empty($inverse['collection'])) {
                 throw new \RuntimeException("M:N relation loading has not been implemented yet");
-            } else if (empty($inverse['fk'])) {
-                throw new \RuntimeException("Relation {$target->getEntityClass()}#{$targetProp} does not specify a foreign key");
-            } else {
-                $identifier = $meta->getSingleIdentifierProperty();
-
-                if (!$identifier) {
-                    throw new \RuntimeException("Entity {$meta->getEntityClass()} has " . ($meta->getIdentifierProperties() ? 'a composite' : 'no') . ' identifier');
-                }
-
-                $ids = Helpers::extractPropertyFromEntities($meta, $entities, $identifier, true);
-
-                if (!$ids) {
-                    return [];
-                }
-
-                $related = $this->find($target)
-                    ->where([
-                        $inverse['fk'] . ' in' => $ids,
-                    ])
-                    ->associateBy($inverse['fk'] . '[]');
-
-                if (!empty($info['orderBy'])) {
-                    $related->orderBy($info['orderBy']);
-                }
-
-                $tmp = [];
-                $rid = $meta->getReflection($identifier);
-                $rrel = $meta->getReflection($relation);
-
-                foreach ($entities as $entity) {
-                    $id = $rid->getValue($entity);
-                    $rrel->setValue($entity, $related[$id] ?? []);
-
-                    if (!empty($related[$id])) {
-                        array_push($tmp, ... $related[$id]);
-                    }
-                }
-
-                return $tmp;
             }
+
+            $identifier = $meta->getSingleIdentifierProperty();
+
+            if (!$identifier) {
+                throw new \RuntimeException("Entity {$meta->getEntityClass()} has " . ($meta->getIdentifierProperties() ? 'a composite' : 'no') . ' identifier');
+            }
+
+            $ids = Helpers::extractPropertyFromEntities($meta, $entities, $identifier, true);
+
+            if (!$ids) {
+                return [];
+            }
+
+            $related = $this->find($target)
+                ->where([
+                    $inverse['fk'] . ' in' => $ids,
+                ])
+                ->associateBy($inverse['fk'] . '[]');
+
+            if (!empty($info['orderBy'])) {
+                $related->orderBy($info['orderBy']);
+            }
+
+            $tmp = [];
+            $rid = $meta->getReflection($identifier);
+            $rrel = $meta->getReflection($relation);
+
+            foreach ($entities as $entity) {
+                $id = $rid->getValue($entity);
+                $rrel->setValue($entity, $related[$id] ?? []);
+
+                if (!empty($related[$id])) {
+                    array_push($tmp, ... $related[$id]);
+                }
+            }
+
+            return $tmp;
         } else {
             return [];
         }

@@ -8,6 +8,7 @@ use Nette\Tokenizer\Exception;
 use Nette\Tokenizer\Stream;
 use Nette\Tokenizer\Token;
 use Nette\Tokenizer\Tokenizer;
+use PORM\Exceptions\ParseError;
 use PORM\SQL\AST\Node\UnionClause;
 
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace PORM\Bridges\Tracy;
 
 use PORM\SQL\Event;
-use PORM\SQL\QueryException;
+use PORM\Exceptions\QueryException;
 use Tracy;
 
 

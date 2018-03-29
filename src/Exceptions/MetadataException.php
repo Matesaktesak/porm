@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PORM\Metadata;
+namespace PORM\Exceptions;
 
 use PORM\Exception;
 

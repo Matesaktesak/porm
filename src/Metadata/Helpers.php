@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace PORM\Metadata;
 
 
+use PORM\Exceptions\MetadataException;
+
 class Helpers {
 
     public static function extractEntityMetadata(\ReflectionClass $entity, INamingStrategy $namingStrategy) : array {
@@ -175,7 +177,7 @@ class Helpers {
         if (empty($info['target'])) {
             throw new MetadataException("Unable to determine relation target for property '{$property->getName()}' of entity '{$entity->getName()}'");
         } else if (empty($info['property'])) {
-            if ($prop = self::extractInverseRelationTarget(new \ReflectionClass($info['target']), $entity, $property->getName())) {
+            if ($prop = self::extractInverseRelationTarget(new \ReflectionClass($info['target']), $entity, $property->getName(), empty($info['fk']))) {
                 $info['property'] = $prop;
             } else if (empty($info['fk'])) {
                 throw new MetadataException("Unable to determine inverse relation target for property '{$property->getName()}' of entity '{$entity->getName()}'");
@@ -185,7 +187,7 @@ class Helpers {
         return $info;
     }
 
-    private static function extractInverseRelationTarget(\ReflectionClass $entity, \ReflectionClass $targetEntity, string $relation) : ?string {
+    private static function extractInverseRelationTarget(\ReflectionClass $entity, \ReflectionClass $targetEntity, string $relation, bool $needFk = false) : ?string {
         $candidates = [];
 
         foreach ($entity->getProperties() as $property) {
@@ -213,7 +215,7 @@ class Helpers {
                 if ($ent === $targetEntity->getName()) {
                     if ($prop === $relation) {
                         return $property->getName();
-                    } else if (!$prop) {
+                    } else if (!$prop && !empty($annotations['Relation']['fk']) === $needFk) {
                         $candidates[] = $property->getName();
                     }
                 }

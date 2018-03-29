@@ -7,6 +7,7 @@ namespace PORM\SQL;
 use PORM\Drivers\IPlatform;
 use PORM\Cache;
 use PORM\EventDispatcher;
+use PORM\Exceptions\InvalidQueryException;
 use PORM\Metadata\Registry;
 use PORM\SQL\AST\IVisitor;
 

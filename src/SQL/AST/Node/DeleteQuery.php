@@ -10,7 +10,7 @@ class DeleteQuery extends Query {
     use CommonClausesTrait;
     use ReturningClauseTrait;
 
-    /** @var TableReference */
+    /** @var TableExpression */
     public $from;
 
 

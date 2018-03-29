@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PORM\Migrations;
 
 use PORM\Drivers\IDriver;
+use PORM\Exceptions\MigrationException;
 
 
 class Runner {
@@ -45,7 +46,7 @@ class Runner {
         $class = basename($path, '.php');
 
         if (!class_exists($class) || !(new \ReflectionClass($class))->implementsInterface(IMigration::class)) {
-            throw new \RuntimeException("Invalid migration '$path': doesn't declare the '$class' class or the class doesn't implement the " . IMigration::class . ' interface');
+            throw new MigrationException("Invalid migration '$path': doesn't declare the '$class' class or the class doesn't implement the " . IMigration::class . ' interface');
         }
 
         /** @var IMigration $migration */

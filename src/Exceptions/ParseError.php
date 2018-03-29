@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PORM\SQL\AST;
-
-use PORM\SQL\InvalidQueryException;
+namespace PORM\Exceptions;
 
 
 class ParseError extends InvalidQueryException {

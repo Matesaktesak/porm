@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PORM\SQL;
+namespace PORM\Exceptions;
 
 use PORM\Exception;
 

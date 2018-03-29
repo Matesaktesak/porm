@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace PORM\SQL;
 
 
+use PORM\Exceptions\InvalidQueryException;
+
 class Query {
 
     private $sql;
@@ -49,7 +51,7 @@ class Query {
     public function getParameters() : array {
         foreach ($this->parameterIndex as $key => $index) {
             if (!isset($this->parameterMap[$index]['value']) && !key_exists('value', $this->parameterMap[$index])) {
-                throw new \RuntimeException("Missing required parameter '$key'");
+                throw new InvalidQueryException("Missing required parameter '$key'");
             }
         }
 

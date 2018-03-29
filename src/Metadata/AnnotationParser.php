@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PORM\Metadata;
 
+use PORM\Exceptions\MetadataException;
 use PORM\SQL\Expression;
 
 
@@ -40,7 +41,7 @@ class AnnotationParser {
 
                 if ($p !== 0) {
                     $descr = $end - $start > 10 ? mb_substr($comment, $start, 10) . '...' : mb_substr($comment, $start, $end - $start);
-                    throw new \RuntimeException("Mismatched parentheses in annotation '$descr'");
+                    throw new MetadataException("Mismatched parentheses in annotation '$descr'");
                 } else {
                     $end = $i + 1;
                 }
@@ -66,7 +67,7 @@ class AnnotationParser {
         } else {
             $len = min(mb_strpos($annotation, "\n"), 10);
             $descr = $len < mb_strlen($annotation) ? mb_substr($annotation, 0, $len) . '...' : $annotation;
-            throw new \RuntimeException("Invalid annotation '$descr'");
+            throw new MetadataException("Invalid annotation '$descr'");
         }
 
         if ($value && $value[0] === '(') {
@@ -89,7 +90,7 @@ class AnnotationParser {
             switch ($t) {
                 case '=':
                     if (!$key) {
-                        throw new \RuntimeException("Invalid annotation");
+                        throw new MetadataException("Invalid annotation");
                     }
                     break;
                 case ',':
@@ -125,7 +126,7 @@ class AnnotationParser {
                     if ($annot === 'Expr') {
                         $val = new Expression($val[0], $val[1] ?? null);
                     } else {
-                        throw new \RuntimeException("Unknown annotation @$annot");
+                        throw new MetadataException("Unknown annotation @$annot");
                     }
 
                     if ($key !== null) {

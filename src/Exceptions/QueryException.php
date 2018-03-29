@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-namespace PORM\SQL;
-
-use PORM\Exception;
+namespace PORM\Exceptions;
 
 
-class QueryException extends Exception {
+class QueryException extends DriverException {
 
     private $query;
 

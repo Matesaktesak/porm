@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace PORM\SQL\AST\Node;
 
-use PORM\SQL\InvalidQueryException;
+use PORM\Exceptions\InvalidQueryException;
 
 
 abstract class Query extends Node {

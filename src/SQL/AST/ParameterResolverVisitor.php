@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace PORM\SQL\AST;
 
 
+use PORM\Exceptions\InvalidQueryException;
+
 class ParameterResolverVisitor implements IVisitor {
 
     private $parameterContainerPredicate;
@@ -69,7 +71,7 @@ class ParameterResolverVisitor implements IVisitor {
             if (isset($params[$key]) || key_exists($key, $params)) {
                 $node->setValue($params[$key]);
             } else if (!isset($node->attributes['replaces'])) {
-                throw new \RuntimeException("Positional parameters set in an Expression instance must be provided with the same Expression instance");
+                throw new InvalidQueryException("Positional parameters set in an Expression instance must be provided with the same Expression instance");
             }
         }
 

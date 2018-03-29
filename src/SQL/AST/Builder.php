@@ -9,7 +9,7 @@ use PORM\Lookup;
 use PORM\Metadata\Entity;
 use PORM\Metadata\Registry;
 use PORM\SQL\Expression;
-use PORM\SQL\InvalidQueryException;
+use PORM\Exceptions\InvalidQueryException;
 
 
 class Builder {
@@ -69,6 +69,7 @@ class Builder {
     public function buildLookupDeleteQuery(Lookup $lookup) : Node\DeleteQuery {
         return $this->buildDeleteQuery(
             $lookup->getEntityMetadata(),
+            '_o',
             $lookup->getWhere(),
             $lookup->getOrderBy(),
             $lookup->getLimit(),
@@ -112,9 +113,9 @@ class Builder {
         return $query;
     }
 
-    public function buildDeleteQuery(Entity $meta, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\DeleteQuery {
+    public function buildDeleteQuery(Entity $meta, ?string $alias = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\DeleteQuery {
         $query = new Node\DeleteQuery();
-        $query->from = new Node\TableReference($meta->getEntityClass());
+        $query->from = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), $alias);
         $this->applyCommonClauses($query, $where, $orderBy, $offset, $limit);
         return $query;
     }

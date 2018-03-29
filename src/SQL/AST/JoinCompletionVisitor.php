@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace PORM\SQL\AST;
 
 use PORM\Metadata\Registry;
-use PORM\SQL\InvalidQueryException;
+use PORM\Exceptions\InvalidQueryException;
 
 
 class JoinCompletionVisitor implements IVisitor {

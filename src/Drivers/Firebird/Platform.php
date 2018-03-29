@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace PORM\Drivers\Firebird;
 
-use PORM\Drivers\DriverException;
+use PORM\Exceptions\DriverException;
 use PORM\Drivers\IDriver;
 use PORM\Drivers\IPlatform;
 use PORM\Migrations\Migration;
 use PORM\SQL\AST\Node as AST;
 use PORM\SQL\AST\Parser;
 use PORM\SQL\Expression;
-use PORM\SQL\InvalidQueryException;
+use PORM\Exceptions\InvalidQueryException;
 
 
 class Platform implements IPlatform {
@@ -135,7 +135,7 @@ class Platform implements IPlatform {
 
         $sql = [
             'DELETE FROM',
-            $this->formatASTTable($query->from),
+            $this->formatASTTableExpression($query->from),
         ];
 
         $this->applyWhereClause($sql, $query->where);
