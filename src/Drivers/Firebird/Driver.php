@@ -160,9 +160,9 @@ class Driver implements IDriver {
             }
         }
 
-        if (preg_match('~^violation of (.+?) constraint~i', $msg, $m)) {
+        if (preg_match('~violation of (.+?) constraint~i', $msg, $m)) {
             $class = lcfirst($m[1]) === 'f' ? ForeignKeyConstraintViolationException::class : UniqueConstraintViolationException::class;
-        } else if (preg_match('~^validation error for column~i', $msg)) {
+        } else if (preg_match('~validation error for column~i', $msg)) {
             $class = ConstraintViolationException::class;
         } else {
             $class = QueryException::class;
