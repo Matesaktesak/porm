@@ -261,7 +261,9 @@ class Platform implements IPlatform {
             throw new \LogicException("Internal error");
         }
 
-        array_push($this->paramMapStack[0], ... $map);
+        if ($map) {
+            array_push($this->paramMapStack[0], ... $map);
+        }
     }
 
 
