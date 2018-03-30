@@ -377,19 +377,11 @@ class Parser {
         }
 
         if ($stream->nextToken('LIMIT')) {
-            if (($token = $stream->nextToken(self::T_LITERAL)) && is_numeric($token->value)) {
-                $query->limit = Node\Literal::int((int) $token->value);
-            } else {
-                throw $this->parseError($token ?: $stream->nextToken());
-            }
+            $query->limit = $this->parseExpr($stream, true);
         }
 
         if ($stream->nextToken('OFFSET')) {
-            if (($token = $stream->nextToken(self::T_LITERAL)) && is_numeric($token->value)) {
-                $query->offset = Node\Literal::int((int) $token->value);
-            } else {
-                throw $this->parseError($token ?: $stream->nextToken());
-            }
+            $query->offset = $this->parseExpr($stream, true);
         }
     }
 

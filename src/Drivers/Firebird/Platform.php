@@ -80,11 +80,11 @@ class Platform implements IPlatform {
         }
 
         if ($query->offset) {
-            $sql[] = sprintf('OFFSET %d %s', $query->offset->value, $query->offset->value === 1 ? 'ROW' : 'ROWS');
+            $sql[] = sprintf('OFFSET %d ROWS', $this->formatASTExpression($query->offset));
         }
 
         if ($query->limit) {
-            $sql[] = sprintf('FETCH %s %d %s ONLY', $query->offset ? 'NEXT' : 'FIRST', $query->limit->value, $query->limit->value === 1 ? 'ROW' : 'ROWS');
+            $sql[] = sprintf('FETCH NEXT %d ROWS ONLY', $this->formatASTExpression($query->limit));
         }
 
         return $this->leaveQuery($query, implode(' ', $sql));
@@ -273,18 +273,28 @@ class Platform implements IPlatform {
     }
 
 
-    private function applyCommonClauses(array & $query, ?array $orderBy, ?AST\Literal $offset, ?AST\Literal $limit) : void {
+    private function applyCommonClauses(array & $query, ?array $orderBy, ?AST\Expression $offset, ?AST\Expression $limit) : void {
         if ($orderBy) {
             $query[] = 'ORDER BY';
             $query[] = implode(', ', array_map(\Closure::fromCallable([$this, 'formatASTOrderExpression']), $orderBy));
         }
 
-        if ($offset) {
-            $query[] = sprintf('ROWS %d', $offset->value + 1);
-        }
-
-        if ($limit) {
-            $query[] = sprintf('%s %d', $offset ? 'TO' : 'ROWS', $offset ? $offset->value + $limit->value : $limit->value);
+        if ($limit && !$offset) {
+            $query[] = 'ROWS';
+            $query[] = $this->formatASTExpression($limit);
+        } else if ($limit && $offset) {
+            $query[] = sprintf(
+                'ROWS (%s + 1) TO (%s + %s)',
+                $this->formatASTExpression($offset),
+                $this->formatASTExpression($offset),
+                $this->formatASTExpression($limit)
+            );
+        } else if ($offset && !$limit) {
+            $query[] = sprintf(
+                'ROWS (%s + 1) TO %d',
+                $this->formatASTExpression($offset),
+                PHP_INT_MAX
+            );
         }
     }
 

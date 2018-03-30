@@ -10,10 +10,10 @@ trait CommonClausesTrait {
     /** @var OrderExpression[] */
     public $orderBy = [];
 
-    /** @var Literal|null */
+    /** @var Expression|null */
     public $limit = null;
 
-    /** @var Literal|null */
+    /** @var Expression|null */
     public $offset = null;
 
 }
