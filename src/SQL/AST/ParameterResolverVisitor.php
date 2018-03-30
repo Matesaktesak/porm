@@ -40,7 +40,7 @@ class ParameterResolverVisitor implements IVisitor {
         /** @var Node\ParameterReference $node */
 
         /** @var Node\Query $query */
-        $query = $context->getRootNode();
+        $query = $context->getClosestQueryNode();
 
         if ($node->hasInfo()) {
             $info = $node->getInfo();
@@ -62,10 +62,10 @@ class ParameterResolverVisitor implements IVisitor {
 
             if (isset($node->attributes['replaces'])) {
                 $key = $node->attributes['replaces'];
-            } else if (isset($container->attributes['parameter_idx'])) {
-                $key = ++$container->attributes['parameter_idx'];
+            } else if (isset($container->attributes['parameter_ids'])) {
+                $key = ++$container->attributes['parameter_ids'];
             } else {
-                $key = $container->attributes['parameter_idx'] = 0;
+                $key = $container->attributes['parameter_ids'] = 0;
             }
 
             if (isset($params[$key]) || key_exists($key, $params)) {
@@ -76,10 +76,12 @@ class ParameterResolverVisitor implements IVisitor {
         }
 
         if ($node->hasValue()) {
-            $query->registerFixedParameter($node->getValue(), $info['type'] ?? null, $info['nullable'] ?? null);
+            $id = $query->registerFixedParameter($node->getValue(), $info['type'] ?? null, $info['nullable'] ?? null);
         } else {
-            $query->registerRequiredParameter($node->attributes['replaces'] ?? null, $info['type'] ?? null, $info['nullable'] ?? null);
+            $id = $query->registerRequiredParameter($node->attributes['replaces'] ?? null, $info['type'] ?? null, $info['nullable'] ?? null);
         }
+
+        $node->setId($id);
     }
 
     public function leave(Node\Node $node, Context $context) : void {

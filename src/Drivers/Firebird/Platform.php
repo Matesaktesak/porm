@@ -11,6 +11,7 @@ use PORM\Migrations\Migration;
 use PORM\SQL\AST\Node as AST;
 use PORM\SQL\AST\Parser;
 use PORM\SQL\Expression;
+use PORM\SQL\Query;
 use PORM\Exceptions\InvalidQueryException;
 
 
@@ -18,8 +19,11 @@ class Platform implements IPlatform {
 
     private const MIGRATION_TABLE = 'PORM_MIGRATIONS';
 
+    private $opStack = [];
 
-    private $stack = [];
+    private $queryStack = [];
+
+    private $paramMapStack = [];
 
 
     public function supportsReturningClause() : bool {
@@ -30,8 +34,8 @@ class Platform implements IPlatform {
         return new Expression('GEN_ID(' . $name . ', ?)', [$increment ? 1 : 0]);
     }
 
-    public function formatSelectQuery(AST\SelectQuery $query) : string {
-        $this->stack[] = null;
+    public function formatSelectQuery(AST\SelectQuery $query) : Query {
+        $this->enterQuery($query);
         $sql = [];
 
         if ($query->unionWith) {
@@ -83,12 +87,11 @@ class Platform implements IPlatform {
             $sql[] = sprintf('FETCH %s %d %s ONLY', $query->offset ? 'NEXT' : 'FIRST', $query->limit->value, $query->limit->value === 1 ? 'ROW' : 'ROWS');
         }
 
-        array_pop($this->stack);
-        return implode(' ', $sql);
+        return $this->leaveQuery($query, implode(' ', $sql));
     }
 
-    public function formatInsertQuery(AST\InsertQuery $query) : string {
-        $this->stack[] = null;
+    public function formatInsertQuery(AST\InsertQuery $query) : Query {
+        $this->enterQuery($query);
 
         $sql = [
             'INSERT INTO',
@@ -108,12 +111,11 @@ class Platform implements IPlatform {
 
         $this->applyReturningClause($sql, $query->returning);
 
-        array_pop($this->stack);
-        return implode(' ', $sql);
+        return $this->leaveQuery($query, implode(' ', $sql));
     }
 
-    public function formatUpdateQuery(AST\UpdateQuery $query) : string {
-        $this->stack[] = null;
+    public function formatUpdateQuery(AST\UpdateQuery $query) : Query {
+        $this->enterQuery($query);
 
         $sql = [
             'UPDATE',
@@ -126,12 +128,11 @@ class Platform implements IPlatform {
         $this->applyCommonClauses($sql, $query->orderBy, $query->offset, $query->limit);
         $this->applyReturningClause($sql, $query->returning);
 
-        array_pop($this->stack);
-        return implode(' ', $sql);
+        return $this->leaveQuery($query, implode(' ', $sql));
     }
 
-    public function formatDeleteQuery(AST\DeleteQuery $query) : string {
-        $this->stack[] = null;
+    public function formatDeleteQuery(AST\DeleteQuery $query) : Query {
+        $this->enterQuery($query);
 
         $sql = [
             'DELETE FROM',
@@ -142,8 +143,7 @@ class Platform implements IPlatform {
         $this->applyCommonClauses($sql, $query->orderBy, $query->offset, $query->limit);
         $this->applyReturningClause($sql, $query->returning);
 
-        array_pop($this->stack);
-        return implode(' ', $sql);
+        return $this->leaveQuery($query, implode(' ', $sql));
     }
 
 
@@ -223,12 +223,55 @@ class Platform implements IPlatform {
     }
 
 
+    private function enterQuery(AST\Query $query) : void {
+        $this->opStack[] = null;
+        array_unshift($this->queryStack, $query);
+        array_unshift($this->paramMapStack, []);
+    }
+
+
+    private function leaveQuery(AST\Query $query, string $sql) : Query {
+        array_pop($this->opStack);
+
+        if (array_shift($this->queryStack) !== $query) {
+            throw new \LogicException("Internal error");
+        }
+
+        return new Query($sql, array_shift($this->paramMapStack), $query->getResultMap());
+    }
+
+    private function getCurrentQuery() : AST\Query {
+        if (empty($this->queryStack)) {
+            throw new \LogicException("Internal error");
+        }
+
+        return reset($this->queryStack);
+    }
+
+    private function mapParameter(array $info) : void {
+        if (empty($this->paramMapStack)) {
+            throw new \LogicException("Internal error");
+        }
+
+        $this->paramMapStack[0][] = $info;
+    }
+
+    private function mergeParameterMap(array $map) : void {
+        if (empty($this->paramMapStack)) {
+            throw new \LogicException("Internal error");
+        }
+
+        array_push($this->paramMapStack[0], ... $map);
+    }
+
+
     private function applyWhereClause(array & $query, ?AST\Expression $where) : void {
         if ($where) {
             $query[] = 'WHERE';
             $query[] = $this->formatASTExpression($where);
         }
     }
+
 
     private function applyCommonClauses(array & $query, ?array $orderBy, ?AST\Literal $offset, ?AST\Literal $limit) : void {
         if ($orderBy) {
@@ -264,38 +307,41 @@ class Platform implements IPlatform {
             case AST\Literal::class: /** @var AST\Literal $expression */
                 return $this->formatASTLiteral($expression);
 
-            case AST\ParameterReference::class:
+            case AST\ParameterReference::class: /** @var AST\ParameterReference $expression */
+                $this->mapParameter($this->getCurrentQuery()->getParameterInfo($expression->getId()));
                 return '?';
 
             case AST\FunctionCall::class: /** @var AST\FunctionCall $expression */
-                $this->stack[] = null;
+                $this->opStack[] = null;
                 $expression = $this->formatASTFunctionCall($expression);
                 break;
 
             case AST\ExpressionList::class: /** @var AST\ExpressionList $expression */
-                $this->stack[] = null;
+                $this->opStack[] = null;
                 $expression = $this->formatASTExpressionList($expression);
                 break;
 
             case AST\SubqueryExpression::class: /** @var AST\SubqueryExpression $expression */
-                return '(' . $this->formatSelectQuery($expression->query) . ')';
+                $query = $this->formatSelectQuery($expression->query);
+                $this->mergeParameterMap($query->getParameterMap());
+                return '(' . $query->getSql() . ')';
 
             case AST\CaseExpression::class: /** @var AST\CaseExpression $expression */
-                $this->stack[] = null;
+                $this->opStack[] = null;
                 $expression = $this->formatASTCaseExpression($expression);
                 break;
 
             case AST\UnaryExpression::class: /** @var AST\UnaryExpression $expression */
-                $this->stack[] = -1;
+                $this->opStack[] = -1;
                 $expression = $expression->operator . ' ' . $this->formatASTExpression($expression->argument);
                 break;
 
             case AST\ArithmeticExpression::class: /** @var AST\ArithmeticExpression $expression */
             case AST\BinaryExpression::class: /** @var AST\BinaryExpression $expression */
             case AST\LogicExpression::class: /** @var AST\LogicExpression $expression */
-                $parent = end($this->stack);
+                $parent = end($this->opStack);
                 [$op, $cp] = $parent && Parser::OPERATOR_MAP[$expression->operator] > $parent ? ['(', ')'] : ['', ''];
-                $this->stack[] = Parser::OPERATOR_MAP[$expression->operator];
+                $this->opStack[] = Parser::OPERATOR_MAP[$expression->operator];
 
                 if ($expression->operator === 'CONTAINS') {
                     $operator = 'CONTAINING';
@@ -320,7 +366,7 @@ class Platform implements IPlatform {
                 throw new DriverException("Unknown expression type " . get_class($expression));
         }
 
-        array_pop($this->stack);
+        array_pop($this->opStack);
         return $expression;
     }
 
@@ -432,9 +478,9 @@ class Platform implements IPlatform {
                 return $this->formatASTIdentifier($table->name);
 
             case AST\SubqueryExpression::class: /** @var AST\SubqueryExpression $table */
-                $this->stack[] = null;
-                $expression = '(' . $this->formatSelectQuery($table->query) . ')';
-                array_pop($this->stack);
+                $query = $this->formatSelectQuery($table->query);
+                $this->mergeParameterMap($query->getParameterMap());
+                $expression = '(' . $query->getSql() . ')';
                 return $expression;
 
             default:

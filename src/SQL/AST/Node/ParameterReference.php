@@ -28,6 +28,14 @@ class ParameterReference extends Expression {
         $this->attributes['nullable'] = $nullable;
     }
 
+    public function setId(int $id) : void {
+        $this->attributes['id'] = $id;
+    }
+
+    public function getId() : int {
+        return $this->attributes['id'];
+    }
+
     public function hasInfo() : bool {
         return isset($this->attributes['type']) || isset($this->attributes['nullable']);
     }

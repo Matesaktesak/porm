@@ -70,26 +70,16 @@ class Translator {
 
         switch (get_class($query)) {
             case AST\Node\SelectQuery::class: /** @var AST\Node\SelectQuery $query */
-                $sql = $this->platform->formatSelectQuery($query);
-                break;
+                return $this->platform->formatSelectQuery($query);
             case AST\Node\InsertQuery::class: /** @var AST\Node\InsertQuery $query */
-                $sql = $this->platform->formatInsertQuery($query);
-                break;
+                return $this->platform->formatInsertQuery($query);
             case AST\Node\UpdateQuery::class: /** @var AST\Node\UpdateQuery $query */
-                $sql = $this->platform->formatUpdateQuery($query);
-                break;
+                return $this->platform->formatUpdateQuery($query);
             case AST\Node\DeleteQuery::class: /** @var AST\Node\DeleteQuery $query */
-                $sql = $this->platform->formatDeleteQuery($query);
-                break;
+                return $this->platform->formatDeleteQuery($query);
             default:
                 throw new InvalidQueryException(":-(");
         }
-
-        return new Query(
-            $sql,
-            $query->getParameterMap(),
-            $query->getResultMap()
-        );
     }
 
 
@@ -126,6 +116,7 @@ class Translator {
             'sql' => 'Compiled SQL',
             'parameterMap' => 'Parameter map',
             'resultMap' => 'Result map',
+            'parameterIndex' => 'Parameter index',
         ]);
     }
 

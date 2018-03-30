@@ -30,7 +30,7 @@ class NativeFunctions {
     }
 
     public static function CONCAT(AST\Expression ... $expressions) : array {
-        return [implode(' || ', array_fill(0, count($expressions), '%s')), $expressions];
+        return ['(' . implode(' || ', array_fill(0, count($expressions), '%s')) . ')', $expressions];
     }
 
 }

@@ -7,6 +7,7 @@ namespace PORM\Drivers;
 use PORM\Migrations\Migration;
 use PORM\SQL\AST\Node as AST;
 use PORM\SQL\Expression;
+use PORM\SQL\Query;
 
 
 interface IPlatform {
@@ -16,13 +17,13 @@ interface IPlatform {
 
     public function formatGenerator(string $name, bool $increment = true) : Expression;
 
-    public function formatSelectQuery(AST\SelectQuery $query) : string;
+    public function formatSelectQuery(AST\SelectQuery $query) : Query;
 
-    public function formatInsertQuery(AST\InsertQuery $query) : string;
+    public function formatInsertQuery(AST\InsertQuery $query) : Query;
 
-    public function formatUpdateQuery(AST\UpdateQuery $query) : string;
+    public function formatUpdateQuery(AST\UpdateQuery $query) : Query;
 
-    public function formatDeleteQuery(AST\DeleteQuery $query) : string;
+    public function formatDeleteQuery(AST\DeleteQuery $query) : Query;
 
 
     public function toPlatformBool(bool $value);

@@ -10,7 +10,9 @@ use PORM\Exceptions\InvalidQueryException;
 abstract class Query extends Node {
 
 
-    private $paramIdx = -1;
+    private $paramId = -1;
+
+    private $paramIndex = -1;
 
 
     public function mapResource(array $fields, ?string $alias = null, ?string $entity = null) : void {
@@ -100,21 +102,29 @@ abstract class Query extends Node {
         }, $this->attributes['resultMap'] ?? []);
     }
 
-    public function registerRequiredParameter(?string $key = null, ?string $type = null, ?bool $nullable = null) : void {
-        $this->attributes['parameterMap'][] = [
-            'key' => $key ?? ++$this->paramIdx,
+    public function registerRequiredParameter(?string $key = null, ?string $type = null, ?bool $nullable = null) : int {
+        $this->attributes['parameterMap'][++$this->paramId] = [
+            'key' => $key ?? ++$this->paramIndex,
             'type' => $type,
             'nullable' => $nullable,
         ];
+
+        return $this->paramId;
     }
 
-    public function registerFixedParameter($value, ?string $type = null, ?bool $nullable = null) : void {
-        $this->attributes['parameterMap'][] = [
+    public function registerFixedParameter($value, ?string $type = null, ?bool $nullable = null) : int {
+        $this->attributes['parameterMap'][++$this->paramId] = [
             'key' => null,
             'type' => $type,
             'nullable' => $nullable,
             'value' => $value,
         ];
+
+        return $this->paramId;
+    }
+
+    public function getParameterInfo(int $id) : array {
+        return $this->attributes['parameterMap'][$id];
     }
 
     public function getParameterMap() : array {

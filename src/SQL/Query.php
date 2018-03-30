@@ -19,11 +19,16 @@ class Query {
 
 
 
-    public function __construct(string $sql, array $parameterMap = [], array $resultMap = []) {
+    public function __construct(string $sql, array $parameterMap = [], array $resultMap = [], ?array $parameterIndex = null) {
         $this->sql = $sql;
         $this->parameterMap = $parameterMap;
         $this->resultMap = $resultMap;
-        $this->buildParameterIndex();
+
+        if ($parameterIndex !== null) {
+            $this->parameterIndex = $parameterIndex;
+        } else {
+            $this->parameterIndex = $this->buildParameterIndex($this->parameterMap);
+        }
     }
 
     public function getSql() : string {
@@ -41,7 +46,9 @@ class Query {
             throw new \InvalidArgumentException("Invalid parameter '$param'");
         }
 
-        $this->parameterMap[$this->parameterIndex[$param]]['value'] = $value;
+        foreach ($this->parameterIndex[$param] as $id) {
+            $this->parameterMap[$id]['value'] = $value;
+        }
     }
 
     public function hasParameters() : bool {
@@ -49,9 +56,11 @@ class Query {
     }
 
     public function getParameters() : array {
-        foreach ($this->parameterIndex as $key => $index) {
-            if (!isset($this->parameterMap[$index]['value']) && !key_exists('value', $this->parameterMap[$index])) {
-                throw new InvalidQueryException("Missing required parameter '$key'");
+        foreach ($this->parameterIndex as $key => $ids) {
+            foreach ($ids as $id) {
+                if (!isset($this->parameterMap[$id]['value']) && !key_exists('value', $this->parameterMap[$id])) {
+                    throw new InvalidQueryException("Missing required parameter '$key'");
+                }
             }
         }
 
@@ -67,12 +76,16 @@ class Query {
     }
 
 
-    private function buildParameterIndex() : void {
-        foreach ($this->parameterMap as $i => $info) {
+    private function buildParameterIndex(array $parameterMap) : array {
+        $index = [];
+
+        foreach ($parameterMap as $id => $info) {
             if ($info['key'] !== null) {
-                $this->parameterIndex[$info['key']] = $i;
+                $index[$info['key']][] = $id;
             }
         }
+
+        return $index;
     }
 
 }
