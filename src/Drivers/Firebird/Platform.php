@@ -31,7 +31,7 @@ class Platform implements IPlatform {
     }
 
     public function formatGenerator(string $name, bool $increment = true) : Expression {
-        return new Expression('GEN_ID(' . $name . ', ?)', [$increment ? 1 : 0]);
+        return new Expression('GEN_ID("' . $name . '", ?)', [$increment ? 1 : 0]);
     }
 
     public function formatSelectQuery(AST\SelectQuery $query) : Query {
