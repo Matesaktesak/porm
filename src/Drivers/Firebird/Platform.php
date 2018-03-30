@@ -39,7 +39,9 @@ class Platform implements IPlatform {
         $sql = [];
 
         if ($query->unionWith) {
-            $sql[] = $this->formatSelectQuery($query->unionWith->query);
+            $union = $this->formatSelectQuery($query->unionWith->query);
+            $this->mergeParameterMap($union->getParameterMap());
+            $sql[] = $union->getSql();
             $sql[] = $query->unionWith->all ? 'UNION ALL' : 'UNION';
         }
 
