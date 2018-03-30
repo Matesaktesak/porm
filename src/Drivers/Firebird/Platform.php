@@ -82,11 +82,11 @@ class Platform implements IPlatform {
         }
 
         if ($query->offset) {
-            $sql[] = sprintf('OFFSET %d ROWS', $this->formatASTExpression($query->offset));
+            $sql[] = sprintf('OFFSET %s ROWS', $this->formatASTExpression($query->offset));
         }
 
         if ($query->limit) {
-            $sql[] = sprintf('FETCH NEXT %d ROWS ONLY', $this->formatASTExpression($query->limit));
+            $sql[] = sprintf('FETCH NEXT %s ROWS ONLY', $this->formatASTExpression($query->limit));
         }
 
         return $this->leaveQuery($query, implode(' ', $sql));
