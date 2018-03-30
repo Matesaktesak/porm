@@ -34,7 +34,7 @@ class NativeFunctions {
     }
 
     public static function GEN_ID(AST\Literal $name, ?AST\Expression $increment = null) : array {
-        $args = [$name];
+        $args = [(string) $name->value];
         $increment && ($args[] = $increment);
         return ['GEN_ID(%s' . ($increment ? ', %s)' : ')'), $args];
     }
