@@ -123,7 +123,7 @@ class Panel implements Tracy\IBarPanel {
 
     private static function formatSql(string $query) : string {
         return preg_replace_callback(
-            '/(?<=[\h(|+-])((EXTRACT\h*\(\h*\S+\h+)?FROM|(?:(?:LEFT|RIGHT|INNER|OUTER)\h+)*JOIN|WHERE|SET|GROUP\h+BY|ORDER\h+BY|INTO|VALUES|SET)(?=\h)/i',
+            '/(?<=[\h(|+-])((EXTRACT\h*\(\h*\S+\h+)?FROM|(?:(?:LEFT|RIGHT|INNER|OUTER)\h+)*JOIN|WHERE|SET|GROUP\h+BY|ORDER\h+BY|INTO|VALUES|SET|UNION)(?=\h)/i',
             function(array $m) : string { return !isset($m[2]) ? "\n" . $m[1] : $m[1]; },
             $query
         );
