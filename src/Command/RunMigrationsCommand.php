@@ -8,6 +8,7 @@ use PORM\Migrations\Resolver;
 use PORM\Migrations\Runner;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 
@@ -27,7 +28,7 @@ class RunMigrationsCommand extends Command {
     protected function configure() : void {
         $this->setName('porm:migrations:run')
             ->setDescription('Run any migrations that haven\'t been applied yet')
-            ->addOption('dry-run', 'd', 'Dry run (show which migrations haven\'t been applied yet)');
+            ->addOption('dry-run', 'd', InputOption::VALUE_NONE, 'Dry run (show which migrations haven\'t been applied yet)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output) : int {
