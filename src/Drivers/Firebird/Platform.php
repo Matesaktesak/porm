@@ -38,13 +38,6 @@ class Platform implements IPlatform {
         $this->enterQuery($query);
         $sql = [];
 
-        if ($query->unionWith) {
-            $union = $this->formatSelectQuery($query->unionWith->query);
-            $this->mergeParameterMap($union->getParameterMap());
-            $sql[] = $union->getSql();
-            $sql[] = $query->unionWith->all ? 'UNION ALL' : 'UNION';
-        }
-
         $sql[] = 'SELECT';
         $sql[] = implode(', ', array_map(\Closure::fromCallable([$this, 'formatASTResultField']), $query->fields));
         $sql[] = 'FROM';
@@ -74,6 +67,13 @@ class Platform implements IPlatform {
         if ($query->having) {
             $sql[] = 'HAVING';
             $sql[] = $this->formatASTExpression($query->having);
+        }
+
+        foreach ($query->union as $union) {
+            $unionQuery = $this->formatSelectQuery($union->query);
+            $this->mergeParameterMap($unionQuery->getParameterMap());
+            $sql[] = $union->all ? 'UNION ALL' : 'UNION';
+            $sql[] = $unionQuery->getSql();
         }
 
         if ($query->orderBy) {

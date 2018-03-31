@@ -9,7 +9,6 @@ use Nette\Tokenizer\Stream;
 use Nette\Tokenizer\Token;
 use Nette\Tokenizer\Tokenizer;
 use PORM\Exceptions\ParseError;
-use PORM\SQL\AST\Node\UnionClause;
 
 
 class Parser {
@@ -121,10 +120,13 @@ class Parser {
     }
 
     private function parseSelectQuery(Stream $stream, ... $until) : Node\SelectQuery {
+        /** @var Node\SelectQuery $root */
+        $root = null;
+        $union = false;
+
         do {
             $this->consume($stream, true, 'SELECT');
             $query = new Node\SelectQuery();
-            $query->unionWith = $unionWith ?? null;
             $query->fields = $this->parseResultFields($stream);
             $query->from = $this->parseFromClause($stream);
 
@@ -148,14 +150,20 @@ class Parser {
 
             $this->parseCommonClauses($stream, $query);
 
-            if ($token = $stream->nextToken('UNION', 'UNION ALL')) {
-                $unionWith = new UnionClause($query, $token->value === 'UNION ALL');
+            if (!$root) {
+                $root = $query;
             } else {
-                $unionWith = null;
+                $root->union[] = new Node\UnionClause($query, $union);
             }
-        } while ($unionWith || $stream->isNext(... self::NON_WS_TOKENS) && (!$until || !$stream->isNext(... $until)));
 
-        return $query;
+            if ($token = $stream->nextToken('UNION', 'UNION ALL')) {
+                $union = $token->value === 'UNION ALL';
+            } else {
+                $union = null;
+            }
+        } while ($union !== null || $stream->isNext(... self::NON_WS_TOKENS) && (!$until || !$stream->isNext(... $until)));
+
+        return $root;
     }
 
     private function parseInsertQuery(Stream $stream) : Node\InsertQuery {

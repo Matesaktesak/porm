@@ -33,6 +33,8 @@ class QueryBuilder {
 
     private $offset = null;
 
+    private $union = [];
+
 
     public function __construct(SQL\Translator $translator, SQL\AST\Builder $builder, Metadata\Entity $entity, ?string $alias = null) {
         $this->translator = $translator;
@@ -100,6 +102,16 @@ class QueryBuilder {
         return $this;
     }
 
+    public function union(QueryBuilder $builder) : self {
+        $this->union[] = new AST\UnionClause($builder->getAST());
+        return $this;
+    }
+
+    public function unionAll(QueryBuilder $builder) : self {
+        $this->union[] = new AST\UnionClause($builder->getAST(), true);
+        return $this;
+    }
+
 
     public function getAST() : AST\SelectQuery {
         $query = $this->builder->buildSelectQuery($this->entity, $this->alias, $this->fields, $this->where, $this->orderBy, $this->limit, $this->offset);
@@ -123,6 +135,7 @@ class QueryBuilder {
         }
 
         $query->having = $this->builder->buildConditionalExpression($this->having);
+        $query->union = $this->union;
 
         return $query;
     }

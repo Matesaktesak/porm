@@ -9,9 +9,6 @@ class SelectQuery extends Query implements IDataSource {
     use WhereClauseTrait;
     use CommonClausesTrait;
 
-    /** @var UnionClause|null */
-    public $unionWith = null;
-
     /** @var ResultField[] */
     public $fields = [];
 
@@ -24,11 +21,13 @@ class SelectQuery extends Query implements IDataSource {
     /** @var Expression|null */
     public $having = null;
 
+    /** @var UnionClause[] */
+    public $union = [];
+
 
 
     public function getTraversableProperties() : array {
         return [
-            'unionWith' => false,
             'from' => true,
             'fields' => true,
             'where' => false,
@@ -37,6 +36,7 @@ class SelectQuery extends Query implements IDataSource {
             'orderBy' => true,
             'limit' => false,
             'offset' => false,
+            'union' => true,
         ];
     }
 
