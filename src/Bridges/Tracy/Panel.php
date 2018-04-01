@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PORM\Bridges\Tracy;
 
+use Composer\Autoload\ClassLoader;
 use PORM\SQL\Event;
 use PORM\Exceptions\QueryException;
 use Tracy;
@@ -13,6 +14,13 @@ class Panel implements Tracy\IBarPanel {
 
     /** @var Event[] */
     private $events = [];
+
+
+    /** @var string */
+    private $pormPath = null;
+
+    /** @var int */
+    private $pormPathLen = null;
 
 
 
@@ -39,6 +47,16 @@ class Panel implements Tracy\IBarPanel {
     }
 
     public function logEvent(Event $event) : void {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+
+        foreach ($trace as $item) {
+            if (isset($item['file']) && !$this->isVendor($item['file'])) {
+                $event->file = $item['file'];
+                $event->line = $item['line'];
+                break;
+            }
+        }
+
         $this->events[] = $event;
     }
 
@@ -90,6 +108,10 @@ class Panel implements Tracy\IBarPanel {
                 ]);
             }
 
+            if (isset($event->file) && isset($event->line)) {
+                $src[] = Tracy\Helpers::editorLink($event->file, $event->line);
+            }
+
             $src[] = '</td>';
             $src[] = '<td class="tracy-OrmPanel-nowrap">';
 
@@ -113,6 +135,27 @@ class Panel implements Tracy\IBarPanel {
     }
 
 
+
+
+    private function isVendor(string $path) : bool {
+        if (class_exists(ClassLoader::class)) {
+            return strpos($path, '/vendor/') !== false;
+        } else {
+            return $this->isPorm($path);
+        }
+    }
+
+    private function isPorm(string $path) : bool {
+        if ($this->pormPath === null) {
+            $this->pormPath = dirname(__DIR__, 3) . '/';
+            $this->pormPathLen = mb_strlen($this->pormPath);
+        }
+
+        return mb_substr($path, 0, $this->pormPathLen) === $this->pormPath;
+    }
+
+
+
     private static function formatTime(?float $duration = null) : string {
         if ($duration !== null) {
             return sprintf('%.3f ms', $duration * 1000);
@@ -123,7 +166,7 @@ class Panel implements Tracy\IBarPanel {
 
     private static function formatSql(string $query) : string {
         return preg_replace_callback(
-            '/(?<=[\h(|+-])((EXTRACT\h*\(\h*\S+\h+)?FROM|(?:(?:LEFT|RIGHT|INNER|OUTER)\h+)*JOIN|WHERE|SET|GROUP\h+BY|ORDER\h+BY|INTO|VALUES|SET|UNION)(?=\h)/i',
+            '/(?<=[\h(+-])((?<!^)SELECT|(EXTRACT\h*\(\h*\S+\h+)?FROM|(?:(?:LEFT|RIGHT|INNER|OUTER)\h+)*JOIN|WHERE|SET|GROUP\h+BY|ORDER\h+BY|INTO|VALUES|SET|UNION)(?=\h)/i',
             function(array $m) : string { return !isset($m[2]) ? "\n" . $m[1] : $m[1]; },
             $query
         );
