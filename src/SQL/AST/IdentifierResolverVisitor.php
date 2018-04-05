@@ -56,8 +56,6 @@ class IdentifierResolverVisitor implements IVisitor {
                 } else {
                     throw new InvalidQueryException("Unknown field: '{$node->value}'");
                 }
-            } else {
-                throw new InvalidQueryException("Unknown alias: '$alias'");
             }
         } else {
             foreach ($context->getParentQueries() as $query) {
@@ -72,18 +70,16 @@ class IdentifierResolverVisitor implements IVisitor {
                     }
                 }
             }
+        }
 
-            if (!isset($info)) {
-                throw new InvalidQueryException("Unknown field: '{$node->value}'");
+        if (isset($info)) {
+            if (!$node->hasTypeInfo()) {
+                $node->setTypeInfo($info['type'], $info['nullable']);
             }
-        }
 
-        if (!$node->hasTypeInfo()) {
-            $node->setTypeInfo($info['type'], $info['nullable']);
-        }
-
-        if (isset($info['field'])) {
-            $node->value = ($alias ? $alias . '.' : '') . $info['field'];
+            if (isset($info['field'])) {
+                $node->value = ($alias ? $alias . '.' : '') . $info['field'];
+            }
         }
 
         if (isset($entity)) {

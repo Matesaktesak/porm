@@ -6,7 +6,6 @@ namespace PORM\SQL\AST;
 
 use Nette\Tokenizer\Exception;
 use Nette\Tokenizer\Stream;
-use Nette\Tokenizer\Token;
 use Nette\Tokenizer\Tokenizer;
 use PORM\Exceptions\ParseError;
 
@@ -22,9 +21,9 @@ class Parser {
         T_WHITESPACE = 0b100000;
 
     public const PATTERNS = [
-        self::T_KEYWORD => 'SELECT|FROM|(?:(?:LEFT|INNER)\s+)?JOIN|UPDATE|SET|INSERT|INTO|VALUES|DELETE|EXISTS|' .
+        self::T_KEYWORD => '(?:SELECT|FROM|(?:(?:LEFT|INNER)\s+)?JOIN|ON|UPDATE|SET|INSERT|INTO|VALUES|DELETE|EXISTS|' .
             'WHERE|GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT|OFFSET|RETURNING|AS|CASE|WHEN|THEN|ELSE|END|AND|OR|IS|' .
-            'LIKE|CONTAINS|(?:NOT\s+)?IN|NOT|DISTINCT|ASC|DESC|UNION(?:\s+ALL)?',
+            'LIKE|CONTAINS|(?:NOT\s+)?IN|NOT|DISTINCT|ASC|DESC|UNION(?:\s+ALL)?)\b',
         self::T_SYMBOL => '[<>!]=|[-+/*%=<>(),*]',
         self::T_LITERAL => 'TRUE|FALSE|NULL|(?:[1-9]\d+|\d)(?:\.\d+)?|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"',
         self::T_IDENTIFIER => '[a-z_][a-z0-9_]*(?:(?::[a-z_][a-z0-9_]*)+|(?:\.[a-z_][a-z0-9_]*)+)?',
@@ -97,7 +96,7 @@ class Parser {
         }
 
         if ($stream->isNext(self::NON_WS_TOKENS)) {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         }
 
         return $query;
@@ -113,7 +112,7 @@ class Parser {
         }
 
         if ($stream->isNext(self::NON_WS_TOKENS)) {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         }
 
         return $expr;
@@ -139,7 +138,7 @@ class Parser {
                     if ($token = $stream->nextToken(self::T_IDENTIFIER)) {
                         $query->groupBy[] = new Node\Identifier($token->value);
                     } else {
-                        throw $this->parseError($stream->nextToken());
+                        throw $this->parseError($stream);
                     }
                 } while ($stream->nextToken(','));
             }
@@ -173,7 +172,7 @@ class Parser {
         if ($token = $stream->nextToken(self::T_IDENTIFIER)) {
             $query->into = new Node\TableReference($token->value);
         } else {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         }
 
         if ($stream->nextToken('(')) {
@@ -241,7 +240,7 @@ class Parser {
         }
 
         if (!$fields) {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         }
 
         return $fields;
@@ -296,7 +295,7 @@ class Parser {
         } else if ($tbl = $this->parseTable($stream, false, $referenceOnly)) {
             $expr = new Node\TableExpression($tbl);
         } else if ($need) {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         } else {
             return null;
         }
@@ -320,7 +319,7 @@ class Parser {
             $this->consume($stream, true, ')');
             return $expr;
         } else if ($need) {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         } else {
             return null;
         }
@@ -332,7 +331,7 @@ class Parser {
         if ($token = $stream->nextToken(self::T_IDENTIFIER)) {
             return new Node\Identifier($token->value);
         } else if ($as) {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         } else {
             return null;
         }
@@ -342,7 +341,7 @@ class Parser {
         if ($token = $stream->nextToken(self::T_IDENTIFIER)) {
             return new Node\Identifier($token->value);
         } else {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         }
     }
 
@@ -418,7 +417,7 @@ class Parser {
             if ($allowEmpty) {
                 return new Node\ExpressionList();
             } else if ($need) {
-                throw $this->parseError($stream->nextToken());
+                throw $this->parseError($stream);
             } else {
                 return null;
             }
@@ -455,12 +454,12 @@ class Parser {
 
         if (!$n) {
             if ($need) {
-                throw $this->parseError($stream->nextToken());
+                throw $this->parseError($stream);
             } else {
                 return null;
             }
         } else if ($n % 2 === 0) {
-            throw $this->parseError($stream->nextToken());
+            throw $this->parseError($stream);
         }
 
         foreach (self::EXPR_MAP as $op => $class) {
@@ -538,7 +537,7 @@ class Parser {
 
             default:
                 if ($need) {
-                    throw $this->parseError($stream->nextToken());
+                    throw $this->parseError($stream);
                 } else {
                     return null;
                 }
@@ -590,7 +589,7 @@ class Parser {
         foreach ($tokens as $token) {
             if (!$stream->nextToken($token)) {
                 if ($need) {
-                    throw $this->parseError($stream->nextToken());
+                    throw $this->parseError($stream);
                 } else {
                     return false;
                 }
@@ -620,7 +619,8 @@ class Parser {
         }
     }
 
-    private function parseError(?Token $token = null) : ParseError {
+    private function parseError(Stream $stream) : ParseError {
+        $token = $stream->nextToken(... self::NON_WS_TOKENS);
         return new ParseError('Unexpected ' . ($token ? sprintf('%s "%s" at offset %d', self::TOKEN_NAMES[$token->type], $token->value, $token->offset) : 'end of query'));
     }
 

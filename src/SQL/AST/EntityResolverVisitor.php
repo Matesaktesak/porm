@@ -52,6 +52,8 @@ class EntityResolverVisitor implements IVisitor {
 
 
     private function visit(Node\Query $query, Node\TableReference $node, ?Node\TableExpression $expr = null) : void {
+        $node->attributes['visited'] = true;
+
         if (strpos($node->name->value, '.')) {
             [$alias, $relation] = explode('.', $node->name->value, 2);
 
@@ -71,13 +73,14 @@ class EntityResolverVisitor implements IVisitor {
             } else {
                 throw new InvalidQueryException("Unknown alias '$alias'");
             }
-        } else {
+        } else if ($this->metadataRegistry->has($node->name->value)) {
             $target = $this->metadataRegistry->get($node->name->value);
+        } else {
+            return;
         }
 
         $query->mapResource($this->extractFieldInfo($target), $expr->alias->value ?? null, $target->getEntityClass());
         $node->name->value = $target->getTableName();
-        $node->attributes['visited'] = true;
     }
 
 

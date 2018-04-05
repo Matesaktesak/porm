@@ -11,7 +11,7 @@ class QueryBuilder {
 
     private $translator;
 
-    private $builder;
+    private $astBuilder;
 
     private $entity;
 
@@ -36,9 +36,9 @@ class QueryBuilder {
     private $union = [];
 
 
-    public function __construct(SQL\Translator $translator, SQL\AST\Builder $builder, Metadata\Entity $entity, ?string $alias = null) {
+    public function __construct(SQL\Translator $translator, SQL\AST\Builder $astBuilder, Metadata\Entity $entity, ?string $alias = null) {
         $this->translator = $translator;
-        $this->builder = $builder;
+        $this->astBuilder = $astBuilder;
         $this->entity = $entity;
         $this->alias = $alias;
     }
@@ -114,7 +114,7 @@ class QueryBuilder {
 
 
     public function getAST() : AST\SelectQuery {
-        $query = $this->builder->buildSelectQuery($this->entity, $this->alias, $this->fields, $this->where, $this->orderBy, $this->limit, $this->offset);
+        $query = $this->astBuilder->buildSelectQuery($this->entity, $this->alias, $this->fields, $this->where, $this->orderBy, $this->limit, $this->offset);
 
         foreach ($this->join as $join) {
             if ($join['relation'] instanceof QueryBuilder) {
@@ -124,7 +124,7 @@ class QueryBuilder {
             }
 
             if ($join['condition']) {
-                $expr->condition = $this->builder->buildConditionalExpression($join['condition']);
+                $expr->condition = $this->astBuilder->buildConditionalExpression($join['condition']);
             }
 
             $query->from[] = $expr;
@@ -134,7 +134,7 @@ class QueryBuilder {
             $query->groupBy[] = new AST\Identifier($prop);
         }
 
-        $query->having = $this->builder->buildConditionalExpression($this->having);
+        $query->having = $this->astBuilder->buildConditionalExpression($this->having);
         $query->union = $this->union;
 
         return $query;
