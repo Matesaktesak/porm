@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PORM\Metadata\CompilerPass;
 
+use PORM\Collection;
 use PORM\Exceptions\MetadataException;
 use PORM\Metadata\Compiler;
 use PORM\Metadata\ICompilerPass;
@@ -75,7 +76,7 @@ class RelationInfoPass implements ICompilerPass {
         $method = 'get' . ucfirst($property->getName());
 
         if ($entity->hasMethod($method) && ($hint = $entity->getMethod($method)->getReturnType())) {
-            if ($hint->getName() === 'array') {
+            if ($hint->getName() === 'array' || $hint->getName() === Collection::class) {
                 $info['collection'] = true;
             } else if (empty($info['target'])) {
                 $info['target'] = $hint->getName();

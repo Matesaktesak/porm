@@ -36,11 +36,11 @@ class Builder {
             $id = $meta->getSingleIdentifierProperty() ?: '*';
             $fields = ['_count' => new Expression('COUNT(_o.' . $id . ')')];
         } else {
-            $fields = null;
+            $fields = $meta->getProperties();
         }
 
         $query = $this->buildSelectQuery(
-            $meta,
+            $meta->getEntityClass(),
             '_o',
             $fields,
             $lookup->getWhere(),
@@ -55,9 +55,12 @@ class Builder {
     }
 
     public function buildLookupUpdateQuery(Lookup $lookup, array $data) : Node\UpdateQuery {
+        $meta = $lookup->getEntityMetadata();
+
         return $this->buildUpdateQuery(
-            $lookup->getEntityMetadata(),
+            $meta->getEntityClass(),
             '_o',
+            $meta->getPropertiesInfo(),
             $data,
             $lookup->getWhere(),
             $lookup->getOrderBy(),
@@ -68,7 +71,7 @@ class Builder {
 
     public function buildLookupDeleteQuery(Lookup $lookup) : Node\DeleteQuery {
         return $this->buildDeleteQuery(
-            $lookup->getEntityMetadata(),
+            $lookup->getEntityMetadata()->getEntityClass(),
             '_o',
             $lookup->getWhere(),
             $lookup->getOrderBy(),
@@ -78,44 +81,40 @@ class Builder {
     }
 
 
-    public function buildSelectQuery(Entity $meta, ?string $alias = null, ?array $fields = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\SelectQuery {
+    public function buildSelectQuery(?string $from = null, ?string $alias = null, ?array $fields = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\SelectQuery {
         $query = new Node\SelectQuery();
-        $query->from[] = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), $alias);
 
-        if (!$fields) {
-            $fields = $meta->getProperties();
+        if ($from) {
+            $query->from[] = new Node\TableExpression(new Node\TableReference($from), $alias);
         }
 
-        $query->fields = $this->buildResultFields($fields, $alias);
+        if ($fields) {
+            $query->fields = $this->buildResultFields($fields, $alias);
+        }
+
         $this->applyCommonClauses($query, $where, $orderBy, $limit, $offset);
         return $query;
     }
 
-    public function buildInsertQuery(Entity $meta, array ... $rows) : Node\InsertQuery {
+    public function buildInsertQuery(string $into, ?array $info, array ... $rows) : Node\InsertQuery {
         $query = new Node\InsertQuery();
-        $query->into = new Node\TableReference($meta->getEntityClass());
+        $query->into = new Node\TableReference($into);
         $query->fields = $rows ? $this->buildFieldList(array_keys(reset($rows))) : [];
-        $query->dataSource = $this->buildValuesExpression($meta, ... $rows);
-
-        if ($meta->hasGeneratedProperty() && $this->platform->supportsReturningClause() && !key_exists($prop = $meta->getGeneratedProperty(), $rows)) {
-            $query->returning[] = new Node\ResultField(new Node\Identifier($prop), '_generated');
-            $query->mapResultField('_generated', $prop);
-        }
-
+        $query->dataSource = $this->buildValuesExpression($info, ... $rows);
         return $query;
     }
 
-    public function buildUpdateQuery(Entity $meta, ?string $alias = null, array $data, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\UpdateQuery {
+    public function buildUpdateQuery(string $table, ?string $alias = null, array $info, array $data, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\UpdateQuery {
         $query = new Node\UpdateQuery();
-        $query->table = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), $alias);
-        $query->data = $this->buildAssignmentExpressionList($meta, $data, $alias);
+        $query->table = new Node\TableExpression(new Node\TableReference($table), $alias);
+        $query->data = $this->buildAssignmentExpressionList($info, $data, $alias);
         $this->applyCommonClauses($query, $where, $orderBy, $limit, $offset);
         return $query;
     }
 
-    public function buildDeleteQuery(Entity $meta, ?string $alias = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\DeleteQuery {
+    public function buildDeleteQuery(string $from, ?string $alias = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\DeleteQuery {
         $query = new Node\DeleteQuery();
-        $query->from = new Node\TableExpression(new Node\TableReference($meta->getEntityClass()), $alias);
+        $query->from = new Node\TableExpression(new Node\TableReference($from), $alias);
         $this->applyCommonClauses($query, $where, $orderBy, $offset, $limit);
         return $query;
     }
@@ -250,7 +249,7 @@ class Builder {
     }
 
 
-    private function buildAssignmentExpressionList(Entity $meta, ?array $data, ?string $alias = null) : array {
+    private function buildAssignmentExpressionList(array $info, ?array $data, ?string $alias = null) : array {
         if (!$data) {
             return [];
         }
@@ -259,11 +258,11 @@ class Builder {
         $alias = $alias ? $alias . '.' : '';
 
         foreach ($data as $prop => $value) {
-            $info = $meta->hasProperty($prop) ? $meta->getPropertyInfo($prop) : null;
+            $nfo = $info[$prop] ?? null;
 
             $expressions[] = new Node\AssignmentExpression(
                 new Node\Identifier($alias . $prop),
-                $this->sanitizeValue($value, $info['type'] ?? null, $info['nullable'] ?? null)
+                $this->sanitizeValue($value, $nfo['type'] ?? null, $nfo['nullable'] ?? null)
             );
         }
 
@@ -277,15 +276,15 @@ class Builder {
         }, $fields);
     }
 
-    private function buildValuesExpression(Entity $meta, array ... $rows) : Node\ValuesExpression {
+    private function buildValuesExpression(?array $info, array ... $rows) : Node\ValuesExpression {
         $expr = new Node\ValuesExpression();
 
         foreach ($rows as $row) {
             $expr->dataSets[] = $set = new Node\ExpressionList();
 
             foreach ($row as $prop => $value) {
-                $info = $meta->hasProperty($prop) ? $meta->getPropertyInfo($prop) : null;
-                $set->expressions[] = $this->sanitizeValue($value, $info['type'] ?? null, $info['nullable'] ?? null);
+                $nfo = $info[$prop] ?? null;
+                $set->expressions[] = $this->sanitizeValue($value, $nfo['type'] ?? null, $nfo['nullable'] ?? null);
             }
         }
 

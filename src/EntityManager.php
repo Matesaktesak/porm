@@ -51,7 +51,13 @@ class EntityManager {
 
     public function get($entity, $id, bool $need = false) {
         $meta = $this->normalizeMeta($entity);
-        $ast = $this->astBuilder->buildSelectQuery($meta, null, null, $this->mapper->extractRawIdentifier($meta, $id));
+        $ast = $this->astBuilder->buildSelectQuery(
+            $meta->getEntityClass(),
+            null,
+            $meta->getProperties(),
+            $this->mapper->extractRawIdentifier($meta, $id)
+        );
+
         $query = $this->translator->compile($ast);
         $result = $this->execute($query);
 
@@ -71,7 +77,7 @@ class EntityManager {
     }
 
 
-    public function persist($entity, $object) : self {
+    public function persist($entity, $object) : void {
         $meta = $this->normalizeMeta($entity);
 
         if ($meta->isReadonly()) {
@@ -99,29 +105,36 @@ class EntityManager {
             $id = null;
         }
 
-        if (empty($id)) {
-            $driver = $this->connection->getDriver();
-            $platform = $this->connection->getPlatform();
+        if ($started = !$this->connection->inTransaction()) {
+            $this->connection->beginTransaction();
+        }
 
-            if ($meta->hasGeneratedProperty()) {
-                $genProp = $meta->getGeneratedProperty();
-                $genPropInfo = $meta->getPropertyInfo($genProp);
+        try {
+            if (empty($id)) {
+                $driver = $this->connection->getDriver();
+                $platform = $this->connection->getPlatform();
 
-                if (!empty($genPropInfo['generator'])) {
-                    $data[$genProp] = $platform->formatGenerator($genPropInfo['generator']);
+                if ($meta->hasGeneratedProperty()) {
+                    $genProp = $meta->getGeneratedProperty();
+                    $genPropInfo = $meta->getPropertyInfo($genProp);
+
+                    if (!empty($genPropInfo['generator'])) {
+                        $data[$genProp] = $platform->formatGenerator($genPropInfo['generator']);
+                    }
+                } else {
+                    $genProp = $genPropInfo = null;
                 }
-            } else {
-                $genProp = $genPropInfo = null;
-            }
 
-            if ($started = !$this->connection->inTransaction()) {
-                $this->connection->beginTransaction();
-            }
-
-            try {
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::prePersist', $object, $this);
 
-                $ast = $this->astBuilder->buildInsertQuery($meta, $data);
+                $ast = $this->astBuilder->buildInsertQuery($meta->getEntityClass(), $meta->getPropertiesInfo(), $data);
+
+                if ($genProp && $platform->supportsReturningClause()) {
+                    $ast->returning = $this->astBuilder->buildResultFields([
+                        '_generated' => $genProp,
+                    ]);
+                }
+
                 $query = $this->translator->compile($ast);
                 $result = $this->execute($query);
 
@@ -137,43 +150,64 @@ class EntityManager {
 
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postPersist', $object, $this);
 
-                if ($started) {
-                    $this->connection->commit();
-                }
-            } catch (\Throwable $e) {
-                if ($started) {
-                    $this->connection->rollback();
-                }
-
-                throw $e;
-            }
-        } else if ($data) {
-            if ($started = !$this->connection->inTransaction()) {
-                $this->connection->beginTransaction();
-            }
-
-            try {
+            } else if ($data) {
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::preUpdate', $object, $this, $changeset);
 
-                $ast = $this->astBuilder->buildUpdateQuery($meta, null, $data, $id);
+                $ast = $this->astBuilder->buildUpdateQuery($meta->getEntityClass(), null, $meta->getPropertiesInfo(), $data, $id);
                 $query = $this->translator->compile($ast);
                 $this->execute($query);
 
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postUpdate', $object, $this, $changeset);
-
-                if ($started) {
-                    $this->connection->commit();
-                }
-            } catch (\Throwable $e) {
-                if ($started) {
-                    $this->rollback();
-                }
-
-                throw $e;
             }
-        }
 
-        return $this;
+            if ($prop = $meta->getSingleIdentifierProperty()) {
+                $localId = $meta->getReflection($prop)->getValue($object);
+            } else {
+                return;
+            }
+
+            foreach ($meta->getRelationsInfo() as $relation => $info) {
+                if (!empty($info['via'])) {
+                    /** @var Collection $coll */
+                    $coll = $meta->getReflection($relation)->getValue($object);
+                    $remote = $this->getEntityMetadata($info['target']);
+                    $remoteId = $remote->getReflection($remote->getSingleIdentifierProperty());
+
+                    if ($add = $coll->getAddedEntries()) {
+                        $add = array_map(function(object $entity) use ($info, $localId, $remoteId) : array {
+                            return [
+                                $info['via']['localColumn'] => $localId,
+                                $info['via']['remoteColumn'] => $remoteId->getValue($entity),
+                            ];
+                        }, $add);
+
+                        $ast = $this->astBuilder->buildInsertQuery($info['via']['table'], null, ... $add);
+                        $query = $this->translator->compile($ast);
+                        $this->execute($query);
+                    }
+
+                    if ($remove = $coll->getRemovedEntries()) {
+                        $remove = array_map(function(object $entity) use ($remoteId) {
+                            return $remoteId->getValue($entity);
+                        }, $remove);
+
+                        $ast = $this->astBuilder->buildDeleteQuery($info['via']['table'], null, [
+                            $info['via']['localColumn'] => $localId,
+                            $info['via']['remoteColumn'] . ' in' => $remove,
+                        ]);
+
+                        $query = $this->translator->compile($ast);
+                        $this->execute($query);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            if ($started) {
+                $this->connection->rollback();
+            }
+
+            throw $e;
+        }
     }
 
     public function remove($entity, $object) : self {
@@ -192,7 +226,7 @@ class EntityManager {
 
             $id = $this->mapper->extractIdentifier($meta, $object);
 
-            $ast = $this->astBuilder->buildDeleteQuery($meta, null, $id);
+            $ast = $this->astBuilder->buildDeleteQuery($meta->getEntityClass(), null, $id);
             $query = $this->translator->compile($ast);
             $this->execute($query);
 
@@ -250,11 +284,16 @@ class EntityManager {
         $result->addProcessor(new Hydrator\EntityHydrator($this, $meta));
 
         if ($relations = $lookup->getRelations()) {
+            $result = iterator_to_array($result, false);
             $this->loadRelations($meta, $result, ... array_keys($relations));
         }
 
         if ($aggregate = $lookup->getAggregations()) {
-            $this->loadAggregation($meta, $result, ... $aggregate);
+            if (!is_array($result)) {
+                $result = iterator_to_array($result);
+            }
+
+            $this->loadAggregate($meta, $result, ... $aggregate);
         }
 
         if ($associateBy = $lookup->getAssociateBy()) {
@@ -329,6 +368,7 @@ class EntityManager {
     }
 
     public function execute(SQL\Query $query) : ?SQL\ResultSet {
+        echo $query->getSql() . "\n\n";
         $result = $this->connection->query($query->getSql(), $this->mapper->convertToDb($query->getParameters(), $query->getParameterMap()));
 
         if ($result) {
@@ -360,6 +400,12 @@ class EntityManager {
             $entity = $meta->getReflection()->newInstanceWithoutConstructor();
             $this->identityMap[$class][$hash]['object'] = $entity;
             $new = true;
+
+            foreach ($meta->getRelationsInfo() as $relation => $info) {
+                if (!empty($info['collection'])) {
+                    $meta->getReflection($relation)->setValue($entity, new Collection());
+                }
+            }
         }
 
         $this->identityMap[$class][$hash]['data'] = $data;
@@ -549,7 +595,6 @@ class EntityManager {
         $result->addProcessor(new MixedHydrator($this, $target));
         $iprop = $meta->getReflection($attachBy);
         $rprop = $meta->getReflection($relation);
-        $default = $collection ? [] : null;
         $map = [];
         $related = [];
 
@@ -565,7 +610,12 @@ class EntityManager {
 
         foreach ($entities as $entity) {
             $id = $iprop->getValue($entity);
-            $rprop->setValue($entity, $map[$id] ?? $default);
+
+            if ($collection) {
+                $rprop->getValue($entity)->merge($map[$id] ?? []);
+            } else {
+                $rprop->setValue($entity, $map[$id] ?? null);
+            }
         }
 
         return $related;

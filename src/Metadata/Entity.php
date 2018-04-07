@@ -131,6 +131,10 @@ class Entity {
         return array_keys($this->propertyMap);
     }
 
+    public function getPropertiesInfo() : array {
+        return $this->properties;
+    }
+
     public function getPropertyMap() : array {
         return $this->propertyMap;
     }
@@ -165,6 +169,14 @@ class Entity {
 
     public function getGeneratedProperty() : ?string {
         return $this->generatedProperty;
+    }
+
+    public function getRelations() : array {
+        return array_keys($this->relations);
+    }
+
+    public function getRelationsInfo() : array {
+        return $this->relations;
     }
 
     public function hasRelation(string $property) : bool {
