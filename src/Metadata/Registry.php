@@ -48,8 +48,12 @@ class Registry {
 
 
     public function has(string $entityClass) : bool {
-        $entityClass = $this->normalizeEntityClass($entityClass);
-        return isset($this->meta[$entityClass]) || !$this->classMapAuthoritative && class_exists($entityClass);
+        if ($this->classMapAuthoritative) {
+            return isset($this->classMap[$entityClass]);
+        } else {
+            $entityClass = $this->normalizeEntityClass($entityClass);
+            return isset($this->meta[$entityClass]) || class_exists($entityClass);
+        }
     }
 
 
