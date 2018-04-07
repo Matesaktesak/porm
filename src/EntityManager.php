@@ -368,7 +368,6 @@ class EntityManager {
     }
 
     public function execute(SQL\Query $query) : ?SQL\ResultSet {
-        echo $query->getSql() . "\n\n";
         $result = $this->connection->query($query->getSql(), $this->mapper->convertToDb($query->getParameters(), $query->getParameterMap()));
 
         if ($result) {
