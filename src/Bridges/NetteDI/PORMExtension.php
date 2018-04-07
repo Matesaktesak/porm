@@ -153,10 +153,9 @@ class PORMExtension extends CompilerExtension {
             $manager = $meta->getManagerClass();
 
             if ($manager && !$builder->getByType($manager)) {
+                $constructor = (new \ReflectionClass($manager))->getConstructor();
                 $manager = $builder->addDefinition($this->prefix('manager.' . lcfirst($meta->getReflection()->getShortName())))
                     ->setType($manager);
-
-                $constructor = (new \ReflectionClass($manager))->getConstructor();
 
                 if ($constructor) {
                     foreach ($constructor->getParameters() as $param) {
