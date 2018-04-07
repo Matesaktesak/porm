@@ -9,14 +9,14 @@ use PORM\Cache;
 
 class Provider {
 
+    private $compiler;
+
     private $cache;
 
-    private $namingStrategy;
 
-
-    public function __construct(?Cache\IStorage $cache = null, ?INamingStrategy $namingStrategy = null) {
+    public function __construct(Compiler $compiler, ?Cache\IStorage $cache = null) {
+        $this->compiler = $compiler;
         $this->cache = $cache;
-        $this->namingStrategy = $namingStrategy;
     }
 
 
@@ -36,7 +36,7 @@ class Provider {
     }
 
     private function extract(\ReflectionClass $entity) : Entity {
-        $meta = Helpers::extractEntityMetadata($entity, $this->getNamingStrategy());
+
 
         return new Entity(
             $meta['entityClass'],
@@ -54,31 +54,6 @@ class Provider {
         );
     }
 
-    public static function serialize(Entity $entity) : string {
-        return Cache\Helpers::serializeInstance($entity, [
-            'entityClass' => 'Entity class',
-            'managerClass' => 'Manager class',
-            'tableName' => 'Table name',
-            'readonly' => 'Readonly',
-            'properties' => 'Properties',
-            'relations' => 'Relations',
-            'aggregateProperties' => 'Aggregate properties',
-            'propertyMap' => 'Property map',
-            'columnMap' => 'Column map',
-            'relationMap' => 'Relation map',
-            'identifierProperties' => 'Identifier properties',
-            'generatedProperty' => 'Generated property',
-        ]);
-    }
 
-
-    private function getCacheKey(\ReflectionClass $entity) : string {
-        return sha1($entity->getName() . "\0" . filemtime($entity->getFileName()));
-    }
-
-
-    private function getNamingStrategy() : INamingStrategy {
-        return $this->namingStrategy ?: $this->namingStrategy = new NamingStrategy\SnakeCase();
-    }
 
 }

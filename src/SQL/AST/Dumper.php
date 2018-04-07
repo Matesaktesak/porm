@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PORM\SQL\AST;
 
 use Nette\PhpGenerator;
+use PORM\SQL\AST\Visitor\CallbackVisitor;
 
 
 class Dumper {

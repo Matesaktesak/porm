@@ -7,6 +7,7 @@ namespace PORM\Drivers\Firebird;
 use PORM\Exceptions\DriverException;
 use PORM\Drivers\IDriver;
 use PORM\Drivers\IPlatform;
+use PORM\Metadata\Entity;
 use PORM\Migrations\Migration;
 use PORM\SQL\AST\Node as AST;
 use PORM\SQL\AST\Parser;
@@ -31,7 +32,7 @@ class Platform implements IPlatform {
     }
 
     public function formatGenerator(string $name, bool $increment = true) : Expression {
-        return new Expression('GEN_ID("' . $name . '", ?)', [$increment ? 1 : 0]);
+        return new Expression('GEN_ID(' . $name . ', ?)', [$increment ? 1 : 0]);
     }
 
     public function formatSelectQuery(AST\SelectQuery $query) : Query {

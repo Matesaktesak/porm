@@ -9,6 +9,10 @@ use PORM\Exceptions\InvalidQueryException;
 
 class Query {
 
+    public const HYDRATE_ARRAY = 'array',
+                 HYDRATE_MIXED = 'mixed';
+
+
     private $sql;
 
     private $parameterIndex = [];

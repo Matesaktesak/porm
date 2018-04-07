@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
-namespace PORM\SQL\AST;
+namespace PORM\SQL\AST\Visitor;
 
 use PORM\Exceptions\InvalidQueryException;
+use PORM\SQL\AST\Context;
+use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\Node;
 
 
 class IdentifierResolverVisitor implements IVisitor {

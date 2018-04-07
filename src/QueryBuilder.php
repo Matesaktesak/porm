@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PORM;
 
+use PORM\Metadata\Entity;
 use PORM\SQL\AST\Node as AST;
 
 
@@ -13,9 +14,10 @@ class QueryBuilder {
 
     private $astBuilder;
 
-    private $entity;
+    /** @var Entity|QueryBuilder|string */
+    private $from = null;
 
-    private $alias = null;
+    private $alias;
 
     private $fields = null;
 
@@ -36,16 +38,29 @@ class QueryBuilder {
     private $union = [];
 
 
-    public function __construct(SQL\Translator $translator, SQL\AST\Builder $astBuilder, Metadata\Entity $entity, ?string $alias = null) {
+    public function __construct(SQL\Translator $translator, SQL\AST\Builder $astBuilder, ?Metadata\Entity $entity = null, ?string $alias = null) {
         $this->translator = $translator;
         $this->astBuilder = $astBuilder;
-        $this->entity = $entity;
+        $this->from = $entity;
         $this->alias = $alias;
     }
 
 
     public function select(array $fields) : self {
         $this->fields = $fields;
+        return $this;
+    }
+
+    public function from($relation, ?string $alias = null) : self {
+        if (!is_string($relation) && !($relation instanceof QueryBuilder) && !($relation instanceof Entity)) {
+            throw new \InvalidArgumentException(
+                'Invalid argument, expected a string, an instance of ' . QueryBuilder::class .
+                ' or an instance of ' . Entity::class
+            );
+        }
+
+        $this->from = $relation;
+        $this->alias = $alias;
         return $this;
     }
 
@@ -114,7 +129,23 @@ class QueryBuilder {
 
 
     public function getAST() : AST\SelectQuery {
-        $query = $this->astBuilder->buildSelectQuery($this->entity, $this->alias, $this->fields, $this->where, $this->orderBy, $this->limit, $this->offset);
+        $query = new AST\SelectQuery();
+
+        if ($this->from instanceof Entity) {
+            if (!$this->fields) {
+                $this->fields = $this->from->getProperties();
+            }
+
+            $this->from = $this->from->getEntityClass();
+        }
+
+        if (is_string($this->from)) {
+            $query->from[] = new AST\TableExpression(new AST\TableReference($this->from), $this->alias);
+        } else {
+            $query->from[] = new AST\TableExpression(new AST\SubqueryExpression($this->from->getAST()), $this->alias);
+        }
+
+        $query->fields = $this->astBuilder->buildResultFields($this->fields, $this->alias);
 
         foreach ($this->join as $join) {
             if ($join['relation'] instanceof QueryBuilder) {
@@ -129,6 +160,8 @@ class QueryBuilder {
 
             $query->from[] = $expr;
         }
+
+        $this->astBuilder->applyCommonClauses($query, $this->where, $this->orderBy, $this->limit, $this->offset);
 
         foreach ($this->groupBy as $prop) {
             $query->groupBy[] = new AST\Identifier($prop);

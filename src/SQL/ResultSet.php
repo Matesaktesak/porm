@@ -14,11 +14,12 @@ class ResultSet implements \IteratorAggregate {
 
     private $resource;
 
-    private $rowProcessor = null;
-
-    private $fieldMap = null;
+    private $processors = [];
 
     private $fetchedRows = 0;
+
+    /** @var string */
+    private $resultId = null;
 
 
     public function __construct(IDriver $driver, $resource) {
@@ -27,28 +28,20 @@ class ResultSet implements \IteratorAggregate {
     }
 
 
-    public function setRowProcessor(callable $processor) : void {
-        $this->rowProcessor = $processor;
-    }
-
-    public function setFieldMap(array $map) : void {
-        $this->fieldMap = $map;
+    public function addProcessor(callable $processor) : void {
+        $this->processors[] = $processor;
     }
 
 
-    public function fetch() : ?array {
+    public function fetch() {
         $this->assertResourceNotFreed();
         $row = $this->driver->fetchRow($this->resource);
 
         if ($row !== null) {
             $this->fetchedRows++;
 
-            if ($this->rowProcessor) {
-                $row = call_user_func($this->rowProcessor, $row);
-            }
-
-            if ($this->fieldMap) {
-                $row = $this->mapRowKeys($row, $this->fieldMap);
+            foreach ($this->processors as $processor) {
+                $row = call_user_func($processor, $row, $this->getResultId());
             }
         }
 
@@ -86,20 +79,15 @@ class ResultSet implements \IteratorAggregate {
     }
 
 
+    private function getResultId() : string {
+        return $this->resultId ?? $this->resultId = spl_object_hash($this);
+    }
+
+
     private function assertResourceNotFreed() : void {
         if ($this->resource === null) {
             throw new Exception("Result set has already been freed");
         }
-    }
-
-    private function mapRowKeys(array $row, array $map) : array {
-        $mapped = [];
-
-        foreach ($row as $field => $value) {
-            $mapped[$map[$field] ?? $field] = $value;
-        }
-
-        return $mapped;
     }
 
 

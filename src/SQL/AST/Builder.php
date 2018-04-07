@@ -174,14 +174,14 @@ class Builder {
     }
 
 
-    private function buildResultFields(array $fields, ?string $alias = null) : array {
+    public function buildResultFields(array $fields, ?string $alias = null) : array {
         $resultFields = [];
         $alias = $alias ? $alias . '.' : '';
 
-        foreach ($fields as $as => $value) { /** @var Expression|string $value */
+        foreach ($fields as $as => $value) { /** @var Expression|Node\Expression|string $value */
             if ($value instanceof Expression) {
                 $value = $this->extractExpression($value);
-            } else {
+            } else if (!($value instanceof Node\Expression)) {
                 $value = new Node\Identifier(strpos($value, '.') === false ? $alias . $value : $value);
             }
 
@@ -192,8 +192,7 @@ class Builder {
     }
 
 
-
-    private function applyCommonClauses(Node\Query $query, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : void {
+    public function applyCommonClauses(Node\Query $query, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : void {
         /** @var Node\SelectQuery|Node\UpdateQuery|Node\DeleteQuery $query */
         $query->where = $this->buildConditionalExpression($where);
         $query->orderBy = $this->buildOrderExpressionList($orderBy);

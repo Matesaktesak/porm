@@ -72,8 +72,8 @@ class Mapper {
     }
 
     public function hydrate(Metadata\Entity $meta, $entity, array $data) : array {
-        foreach ($data as $prop => $value) {
-            $meta->getReflection($prop)->setValue($entity, $value);
+        foreach ($meta->getProperties() as $prop) {
+            $meta->getReflection($prop)->setValue($entity, $data[$prop] ?? null);
         }
 
         return $data;

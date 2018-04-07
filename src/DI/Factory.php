@@ -25,7 +25,7 @@ class Factory {
             'platform' => null,
         ],
         'entities' => [],
-        'namingStrategy' => null,
+        'namingStrategy' => 'snakeCase',
         'migrationsDir' => null,
         'debugger' => null,
     ];
@@ -133,19 +133,15 @@ class Factory {
         return new $class($entityManager, $meta);
     }
 
-    public function createMetadataProvider(?Cache\IStorage $cacheStorage = null, ?Metadata\INamingStrategy $namingStrategy = null) : Metadata\Provider {
-        return new Metadata\Provider($cacheStorage, $namingStrategy);
+    public function createMetadataCompiler(Metadata\INamingStrategy $namingStrategy) : Metadata\Compiler {
+        return new Metadata\Compiler($namingStrategy);
     }
 
-    public function createMetadataRegistry(Metadata\Provider $provider) : Metadata\Registry {
-        return new Metadata\Registry($provider, $this->config['entities']);
+    public function createMetadataRegistry(Metadata\Compiler $compiler, ?Cache\IStorage $cacheStorage = null) : Metadata\Registry {
+        return new Metadata\Registry($compiler, $cacheStorage, $this->config['entities']);
     }
 
-    public function createNamingStrategy() : ?Metadata\INamingStrategy {
-        if (empty($this->config['namingStrategy'])) {
-            return null;
-        }
-
+    public function createNamingStrategy() : Metadata\INamingStrategy {
         $strategy = $this->config['namingStrategy'];
 
         if (is_string($strategy)) {

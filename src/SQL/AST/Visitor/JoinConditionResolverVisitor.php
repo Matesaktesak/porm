@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
-namespace PORM\SQL\AST;
+namespace PORM\SQL\AST\Visitor;
 
 use PORM\Metadata\Registry;
 use PORM\Exceptions\InvalidQueryException;
+use PORM\SQL\AST\Context;
+use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\Node;
 
 
-class JoinCompletionVisitor implements IVisitor {
+class JoinConditionResolverVisitor implements IVisitor {
 
     private $metadataRegistry;
 

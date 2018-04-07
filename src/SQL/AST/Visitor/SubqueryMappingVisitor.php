@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
-namespace PORM\SQL\AST;
+namespace PORM\SQL\AST\Visitor;
+
+use PORM\SQL\AST\Context;
+use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\Node;
 
 
 class SubqueryMappingVisitor implements IVisitor {

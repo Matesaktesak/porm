@@ -39,8 +39,8 @@ class Container {
     /** @var object[] */
     private $managers = [];
 
-    /** @var Metadata\Provider */
-    private $metadataProvider;
+    /** @var Metadata\Compiler */
+    private $metadataCompiler;
 
     /** @var Metadata\Registry */
     private $metadataRegistry;
@@ -129,16 +129,16 @@ class Container {
     }
 
 
-    public function getMetadataProvider() : Metadata\Provider {
-        return $this->metadataProvider ?? $this->metadataProvider = $this->factory->createMetadataProvider(
-            $this->factory->createCacheStorage('metadata', [Metadata\Provider::class, 'serialize']),
+    public function getMetadataCompiler() : Metadata\Compiler {
+        return $this->metadataCompiler ?? $this->metadataCompiler = $this->factory->createMetadataCompiler(
             $this->getNamingStrategy()
         );
     }
 
     public function getMetadataRegistry() : Metadata\Registry {
         return $this->metadataRegistry ?? $this->metadataRegistry = $this->factory->createMetadataRegistry(
-            $this->getMetadataProvider()
+            $this->getMetadataCompiler(),
+            $this->factory->createCacheStorage('metadata', [Metadata\Registry::class, 'serialize'])
         );
     }
 

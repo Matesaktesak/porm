@@ -30,7 +30,7 @@ class Helpers {
             $params[] = '// ' . $comment . "\n" . $dumper->__invoke($obj["\0$class\0$prop"]);
         }
 
-        $src .= preg_replace('/^/m', '    ', implode(",\n", $params));
+        $src .= preg_replace('/^/m', '    ', implode(",\n\n", $params));
         $src .= "\n);\n";
 
         return $src;

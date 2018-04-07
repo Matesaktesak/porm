@@ -4,29 +4,31 @@ declare(strict_types=1);
 
 namespace PORM\Metadata\NamingStrategy;
 
+use PORM\Metadata\Compiler;
 use PORM\Metadata\INamingStrategy;
 
 
 class SnakeCase implements INamingStrategy {
 
-    private $tableName;
 
-
-    public function setTableContext(string $tableName, array $annotations) : void {
-        $this->tableName = $tableName;
+    public function formatTableName(\ReflectionClass $entity, Compiler $compiler) : string {
+        return $this->toSnakeCase($entity->getShortName());
     }
 
-    public function formatTableName(string $className, array $annotations) : string {
-        $shortName = ($p = mb_strrpos($className, '\\')) !== false ? mb_substr($className, $p + 1) : $className;
-        return $this->toSnakeCase($shortName);
+    public function formatColumnName(\ReflectionClass $entity, \ReflectionProperty $property, Compiler $compiler) : string {
+        return $this->toSnakeCase($property->getName());
     }
 
-    public function formatColumnName(string $propertyName, array $annotations) : string {
-        return $this->toSnakeCase($propertyName);
+    public function formatGeneratorName(\ReflectionClass $entity, \ReflectionProperty $property, Compiler $compiler) : string {
+        return $this->toSnakeCase($entity->getShortName() . ucfirst($property->getName()) . 'Seq');
     }
 
-    public function formatGeneratorName(string $propertyName, string $columnName, array $annotations) : string {
-        return $this->tableName . '_' . $propertyName . '_seq';
+    public function formatAssignmentTableName(\ReflectionClass $entity1, \ReflectionClass $entity2, Compiler $compiler) : string {
+        return $this->toSnakeCase($entity1->getShortName() . 'To' . $entity2->getShortName());
+    }
+
+    public function formatAssignmentColumnName(\ReflectionClass $toEntity, \ReflectionProperty $toProperty, Compiler $compiler) : string {
+        return $this->toSnakeCase($toEntity->getShortName() . ucfirst($toProperty->getName()));
     }
 
 

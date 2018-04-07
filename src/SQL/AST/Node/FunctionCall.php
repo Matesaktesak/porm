@@ -24,7 +24,6 @@ class FunctionCall extends Expression {
 
     public function getTraversableProperties() : array {
         return [
-            'name' => false,
             'arguments' => false,
         ];
     }

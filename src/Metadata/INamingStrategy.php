@@ -7,12 +7,14 @@ namespace PORM\Metadata;
 
 interface INamingStrategy {
 
-    public function setTableContext(string $tableName, array $annotations) : void;
+    public function formatTableName(\ReflectionClass $entity, Compiler $compiler) : string;
 
-    public function formatTableName(string $className, array $annotations) : string;
+    public function formatColumnName(\ReflectionClass $entity, \ReflectionProperty $property, Compiler $compiler) : string;
 
-    public function formatColumnName(string $propertyName, array $annotations) : string;
+    public function formatGeneratorName(\ReflectionClass $entity, \ReflectionProperty $property, Compiler $compiler) : string;
 
-    public function formatGeneratorName(string $propertyName, string $columnName, array $annotations) : string;
+    public function formatAssignmentTableName(\ReflectionClass $entity1, \ReflectionClass $entity2, Compiler $compiler) : string;
+
+    public function formatAssignmentColumnName(\ReflectionClass $toEntity, \ReflectionProperty $toProperty, Compiler $compiler) : string;
 
 }

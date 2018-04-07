@@ -66,14 +66,14 @@ class PORMExtension extends CompilerExtension {
         $builder->addDefinition($this->prefix('entity.mapper'))
             ->setFactory($this->prefix('@factory::createMapper'));
 
-        $builder->addDefinition($this->prefix('metadata.provider'))
-            ->setFactory($this->prefix('@factory::createMetadataProvider'))
-            ->setArguments([
-                'cacheStorage' => new Statement($this->prefix('@factory::createCacheStorage'), ['metadata', [Metadata\Provider::class, 'serialize']]),
-            ]);
+        $builder->addDefinition($this->prefix('metadata.compiler'))
+            ->setFactory($this->prefix('@factory::createMetadataCompiler'));
 
         $builder->addDefinition($this->prefix('metadata.registry'))
-            ->setFactory($this->prefix('@factory::createMetadataRegistry'));
+            ->setFactory($this->prefix('@factory::createMetadataRegistry'))
+            ->setArguments([
+                'cacheStorage' => new Statement($this->prefix('@factory::createCacheStorage'), ['metadata', [Metadata\Registry::class, 'serialize']]),
+            ]);
 
         $builder->addDefinition($this->prefix('metadata.namingStrategy'))
             ->setFactory($this->prefix('@factory::createNamingStrategy'));
@@ -138,28 +138,36 @@ class PORMExtension extends CompilerExtension {
         $finder = new Metadata\EntityFinder();
         $map = $finder->getEntityClassMap($config['entities']);
         $def = $builder->getDefinition($this->prefix('metadata.registry'));
-        $def->addSetup(
-            "\\Closure::bind(function() {\n" .
-            "    \$this->classMap = ?;\n" .
-            "    \$this->classMapAuthoritative = true;\n" .
-            "}, \$service, ?)->__invoke()",
-            [
-                $map,
-                Metadata\Registry::class,
-            ]
-        );
+        $def->addSetup('setClassMap', [$map]);
 
         $factory = new Factory($config, $this->cacheDir);
-        $provider = $factory->createMetadataProvider();
+        $ns = $factory->createNamingStrategy();
+        $cs = $factory->createCacheStorage('metadata', [Metadata\Registry::class, 'serialize']);
+        $cmp = $factory->createMetadataCompiler($ns);
+        $registry = $factory->createMetadataRegistry($cmp, $cs);
+        $registry->setClassMap($map);
+        $registry->compileClassMap();
 
         foreach (array_unique(array_filter($map)) as $entityClass) {
-            $meta = $provider->get($entityClass);
+            $meta = $registry->get($entityClass);
             $manager = $meta->getManagerClass();
 
             if ($manager && !$builder->getByType($manager)) {
-                $builder->addDefinition($this->prefix('manager.' . lcfirst($meta->getReflection()->getShortName())))
-                    ->setType($manager)
-                    ->setArguments(['metadata' => new Statement($this->prefix('@metadata.registry::get'), [$entityClass])]);
+                $manager = $builder->addDefinition($this->prefix('manager.' . lcfirst($meta->getReflection()->getShortName())))
+                    ->setType($manager);
+
+                $constructor = (new \ReflectionClass($manager))->getConstructor();
+
+                if ($constructor) {
+                    foreach ($constructor->getParameters() as $param) {
+                        if ($param->hasType() && $param->getType()->getName() === Metadata\Entity::class) {
+                            $manager->setArguments([
+                                $param->getName() => new Statement($this->prefix('@metadata.registry::get'), [$entityClass])
+                            ]);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }

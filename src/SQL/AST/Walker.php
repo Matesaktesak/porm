@@ -99,13 +99,11 @@ class Walker {
 
                 if ($array) {
                     foreach ($node->$property as & $value) {
-                        if ($value instanceof Node\Node) {
-                            while ($replacement = $this->visit($value, $visitors, $contexts)) {
-                                $value = $replacement;
-                            }
+                        while ($replacement = $this->visit($value, $visitors, $contexts)) {
+                            $value = $replacement;
                         }
                     }
-                } else if ($node->$property instanceof Node\Node) {
+                } else if ($node->$property) {
                     while ($replacement = $this->visit($node->$property, $visitors, $contexts)) {
                         $node->$property = $replacement;
                     }
