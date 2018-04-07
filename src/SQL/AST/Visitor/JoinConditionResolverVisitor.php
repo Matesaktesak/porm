@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace PORM\SQL\AST\Visitor;
 
-use PORM\Metadata\Registry;
+use PORM\Metadata\Provider;
 use PORM\Exceptions\InvalidQueryException;
 use PORM\SQL\AST\Context;
 use PORM\SQL\AST\IVisitor;
@@ -13,11 +13,11 @@ use PORM\SQL\AST\Node;
 
 class JoinConditionResolverVisitor implements IVisitor {
 
-    private $metadataRegistry;
+    private $metadataProvider;
 
 
-    public function __construct(Registry $registry) {
-        $this->metadataRegistry = $registry;
+    public function __construct(Provider $provider) {
+        $this->metadataProvider = $provider;
     }
 
 
@@ -37,9 +37,9 @@ class JoinConditionResolverVisitor implements IVisitor {
 
         if (!$node->condition && $node->isRelation()) {
             $relation = $node->getRelationInfo();
-            $meta1 = $this->metadataRegistry->get($query->getMappedEntity($relation['from']));
+            $meta1 = $this->metadataProvider->get($query->getMappedEntity($relation['from']));
             $info1 = $meta1->getRelationInfo($relation['property']);
-            $meta2 = $this->metadataRegistry->get($info1['target']);
+            $meta2 = $this->metadataProvider->get($info1['target']);
             $alias = $node->alias ? $node->alias->value : $meta2->getEntityClass();
 
             if (isset($info1['fk'])) {

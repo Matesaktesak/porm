@@ -8,7 +8,7 @@ use PORM\Drivers\IPlatform;
 use PORM\Cache;
 use PORM\EventDispatcher;
 use PORM\Exceptions\InvalidQueryException;
-use PORM\Metadata\Registry;
+use PORM\Metadata\Provider;
 use PORM\SQL\AST\IVisitor;
 
 
@@ -18,7 +18,7 @@ class Translator {
 
     private $walker;
 
-    private $metadataRegistry;
+    private $metadataProvider;
 
     private $platform;
 
@@ -32,14 +32,14 @@ class Translator {
 
     public function __construct(
         AST\Parser $parser,
-        Registry $metadataRegistry,
+        Provider $metadataProvider,
         IPlatform $platform,
         EventDispatcher $eventDispatcher,
         ?Cache\IStorage $cache = null
     ) {
         $this->parser = $parser;
         $this->walker = new AST\Walker();
-        $this->metadataRegistry = $metadataRegistry;
+        $this->metadataProvider = $metadataProvider;
         $this->platform = $platform;
         $this->eventDispatcher = $eventDispatcher;
         $this->cache = $cache;
@@ -59,24 +59,24 @@ class Translator {
         }
     }
 
-    public function compile(AST\Node\Query $query) : Query {
-        $this->eventDispatcher->dispatch(self::class . '::beforeCompile', $query);
+    public function compile(AST\Node\Query $ast) : Query {
+        $this->eventDispatcher->dispatch(self::class . '::beforeCompile', $ast);
 
         foreach ($this->getASTVisitors() as $visitors) {
-            $this->walker->apply($query, ... $visitors);
+            $this->walker->apply($ast, ... $visitors);
         }
 
-        $this->eventDispatcher->dispatch(self::class . '::compile', $query);
+        $this->eventDispatcher->dispatch(self::class . '::compile', $ast);
 
-        switch (get_class($query)) {
-            case AST\Node\SelectQuery::class: /** @var AST\Node\SelectQuery $query */
-                return $this->platform->formatSelectQuery($query);
-            case AST\Node\InsertQuery::class: /** @var AST\Node\InsertQuery $query */
-                return $this->platform->formatInsertQuery($query);
-            case AST\Node\UpdateQuery::class: /** @var AST\Node\UpdateQuery $query */
-                return $this->platform->formatUpdateQuery($query);
-            case AST\Node\DeleteQuery::class: /** @var AST\Node\DeleteQuery $query */
-                return $this->platform->formatDeleteQuery($query);
+        switch (get_class($ast)) {
+            case AST\Node\SelectQuery::class: /** @var AST\Node\SelectQuery $ast */
+                return $this->platform->formatSelectQuery($ast);
+            case AST\Node\InsertQuery::class: /** @var AST\Node\InsertQuery $ast */
+                return $this->platform->formatInsertQuery($ast);
+            case AST\Node\UpdateQuery::class: /** @var AST\Node\UpdateQuery $ast */
+                return $this->platform->formatUpdateQuery($ast);
+            case AST\Node\DeleteQuery::class: /** @var AST\Node\DeleteQuery $ast */
+                return $this->platform->formatDeleteQuery($ast);
             default:
                 throw new InvalidQueryException(":-(");
         }
@@ -95,9 +95,9 @@ class Translator {
     private function getASTVisitors() : array {
         if ($this->visitors === null) {
             $this->visitors[] = [
-                new AST\Visitor\EntityResolverVisitor($this->metadataRegistry),
+                new AST\Visitor\EntityResolverVisitor($this->metadataProvider),
                 new AST\Visitor\SubqueryMappingVisitor(),
-                new AST\Visitor\JoinConditionResolverVisitor($this->metadataRegistry),
+                new AST\Visitor\JoinConditionResolverVisitor($this->metadataProvider),
                 new AST\Visitor\IdentifierResolverVisitor(),
                 new AST\Visitor\ResultMappingVisitor(),
             ];

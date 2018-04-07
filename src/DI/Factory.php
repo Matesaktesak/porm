@@ -112,7 +112,7 @@ class Factory {
     public function createEntityManager(
         Connection $connection,
         Mapper $mapper,
-        Metadata\Registry $registry,
+        Metadata\Provider $provider,
         SQL\Translator $translator,
         SQL\AST\Builder $astBuilder,
         EventDispatcher $eventDispatcher
@@ -120,15 +120,15 @@ class Factory {
         return new EntityManager(
             $connection,
             $mapper,
-            $registry,
+            $provider,
             $translator,
             $astBuilder,
             $eventDispatcher
         );
     }
 
-    public function createManager(Metadata\Registry $registry, EntityManager $entityManager, string $entity) {
-        $meta = $registry->get($entity);
+    public function createManager(Metadata\Provider $provider, EntityManager $entityManager, string $entity) {
+        $meta = $provider->get($entity);
         $class = $meta->getManagerClass();
         return new $class($entityManager, $meta);
     }
@@ -137,8 +137,8 @@ class Factory {
         return new Metadata\Compiler($namingStrategy);
     }
 
-    public function createMetadataRegistry(Metadata\Compiler $compiler, ?Cache\IStorage $cacheStorage = null) : Metadata\Registry {
-        return new Metadata\Registry($compiler, $cacheStorage, $this->config['entities']);
+    public function createMetadataProvider(Metadata\Compiler $compiler, ?Cache\IStorage $cacheStorage = null) : Metadata\Provider {
+        return new Metadata\Provider($compiler, $cacheStorage, $this->config['entities']);
     }
 
     public function createNamingStrategy() : Metadata\INamingStrategy {
@@ -165,14 +165,14 @@ class Factory {
 
     public function createTranslator(
         SQL\AST\Parser $parser,
-        Metadata\Registry $registry,
+        Metadata\Provider $provider,
         Drivers\IPlatform $platform,
         EventDispatcher $eventDispatcher,
         ?Cache\IStorage $cacheStorage = null
     ) : SQL\Translator {
         return new SQL\Translator(
             $parser,
-            $registry,
+            $provider,
             $platform,
             $eventDispatcher,
             $cacheStorage
@@ -183,8 +183,8 @@ class Factory {
         return new SQL\AST\Parser();
     }
 
-    public function createASTBuilder(Metadata\Registry $registry, SQL\AST\Parser $parser, Drivers\IPlatform $platform) : SQL\AST\Builder {
-        return new SQL\AST\Builder($registry, $parser, $platform);
+    public function createASTBuilder(Metadata\Provider $provider, SQL\AST\Parser $parser, Drivers\IPlatform $platform) : SQL\AST\Builder {
+        return new SQL\AST\Builder($provider, $parser, $platform);
     }
 
     public function createMigrationResolver(Drivers\IDriver $driver, Drivers\IPlatform $platform) : Migrations\Resolver {

@@ -15,8 +15,8 @@ class EventDispatcher {
     private $listeners = [];
 
 
-    public function setListenerResolver(callable $registry) : void {
-        $this->listenerResolver = $registry;
+    public function setListenerResolver(callable $provider) : void {
+        $this->listenerResolver = $provider;
     }
 
 

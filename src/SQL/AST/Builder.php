@@ -7,14 +7,14 @@ namespace PORM\SQL\AST;
 use PORM\Drivers\IPlatform;
 use PORM\Lookup;
 use PORM\Metadata\Entity;
-use PORM\Metadata\Registry;
+use PORM\Metadata\Provider;
 use PORM\SQL\Expression;
 use PORM\Exceptions\InvalidQueryException;
 
 
 class Builder {
 
-    private $metadataRegistry;
+    private $metadataProvider;
 
     private $platform;
 
@@ -22,8 +22,8 @@ class Builder {
 
 
 
-    public function __construct(Registry $metadataRegistry, Parser $parser, IPlatform $platform) {
-        $this->metadataRegistry = $metadataRegistry;
+    public function __construct(Provider $metadataProvider, Parser $parser, IPlatform $platform) {
+        $this->metadataProvider = $metadataProvider;
         $this->parser = $parser;
         $this->platform = $platform;
     }
@@ -214,7 +214,7 @@ class Builder {
         foreach (array_keys(array_filter($relations)) as $relation) {
             if ($meta->hasRelation($relation)) {
                 $info = $meta->getRelationInfo($relation);
-                $relMeta = $this->metadataRegistry->get($info['target']);
+                $relMeta = $this->metadataProvider->get($info['target']);
 
                 if (!empty($info['collection'])) {
                     if (!$relMeta->hasRelationTarget($meta->getEntityClass(), $relation)) {

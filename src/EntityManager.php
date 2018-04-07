@@ -15,7 +15,7 @@ class EntityManager {
 
     private $mapper;
 
-    private $metadataRegistry;
+    private $metadataProvider;
 
     private $translator;
 
@@ -25,21 +25,19 @@ class EntityManager {
 
     private $identityMap = [];
 
-    private $hydrators;
-
 
 
     public function __construct(
         Connection $connection,
         Mapper $mapper,
-        Metadata\Registry $metadataRegistry,
+        Metadata\Provider $metadataProvider,
         SQL\Translator $translator,
         SQL\AST\Builder $astBuilder,
         EventDispatcher $eventDispatcher
     ) {
         $this->connection = $connection;
         $this->mapper = $mapper;
-        $this->metadataRegistry = $metadataRegistry;
+        $this->metadataProvider = $metadataProvider;
         $this->translator = $translator;
         $this->astBuilder = $astBuilder;
         $this->eventDispatcher = $eventDispatcher;
@@ -47,7 +45,7 @@ class EntityManager {
 
 
     public function getEntityMetadata(string $entityClass) : Metadata\Entity {
-        return $this->metadataRegistry->get($entityClass);
+        return $this->metadataProvider->get($entityClass);
     }
 
 
@@ -445,7 +443,7 @@ class EntityManager {
 
     private function normalizeMeta($entity) : Metadata\Entity {
         if (is_string($entity)) {
-            return $this->metadataRegistry->get($entity);
+            return $this->metadataProvider->get($entity);
         } else if ($entity instanceof Metadata\Entity) {
             return $entity;
         } else {
@@ -467,7 +465,7 @@ class EntityManager {
 
     private function loadRelation(Metadata\Entity $meta, array $entities, string $relation) : array {
         $info = $meta->getRelationInfo($relation);
-        $target = $this->metadataRegistry->get($info['target']);
+        $target = $this->metadataProvider->get($info['target']);
         $builder = $this->createQueryBuilder($target, '_r');
 
         if (!empty($info['fk'])) {
@@ -577,7 +575,7 @@ class EntityManager {
     private function loadAggregation(Metadata\Entity $meta, array $entities, string $prop) : void {
         $info = $meta->getAggregatePropertyInfo($prop);
         $relation = $meta->getRelationInfo($info['relation']);
-        $target = $this->metadataRegistry->get($relation['target']);
+        $target = $this->metadataProvider->get($relation['target']);
 
         if ($target->hasRelationTarget($meta->getEntityClass(), $info['relation'])) {
             $targetProp = $target->getRelationTarget($meta->getEntityClass(), $info['relation']);

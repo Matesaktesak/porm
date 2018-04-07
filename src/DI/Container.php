@@ -42,8 +42,8 @@ class Container {
     /** @var Metadata\Compiler */
     private $metadataCompiler;
 
-    /** @var Metadata\Registry */
-    private $metadataRegistry;
+    /** @var Metadata\Provider */
+    private $metadataProvider;
 
     /** @var Metadata\INamingStrategy */
     private $namingStrategy;
@@ -99,7 +99,7 @@ class Container {
         return $this->entityManager ?? $this->entityManager = $this->factory->createEntityManager(
             $this->getConnection(),
             $this->getMapper(),
-            $this->getMetadataRegistry(),
+            $this->getMetadataProvider(),
             $this->getTranslator(),
             $this->getASTBuilder(),
             $this->getEventDispatcher()
@@ -108,17 +108,17 @@ class Container {
 
 
     public function getManager(string $entity) {
-        $entity = $this->getMetadataRegistry()->normalizeEntityClass($entity);
+        $entity = $this->getMetadataProvider()->normalizeEntityClass($entity);
 
         if (isset($this->managers[$entity])) {
             return $this->managers[$entity];
         }
 
-        return $this->managers[$entity] = $this->factory->createManager($this->getMetadataRegistry(), $this->getEntityManager(), $entity);
+        return $this->managers[$entity] = $this->factory->createManager($this->getMetadataProvider(), $this->getEntityManager(), $entity);
     }
 
     public function registerManager(string $entity, $manager) : void {
-        $meta = $this->getMetadataRegistry()->get($entity);
+        $meta = $this->getMetadataProvider()->get($entity);
         $class = $meta->getManagerClass();
 
         if ($class && !($manager instanceof $class)) {
@@ -135,10 +135,10 @@ class Container {
         );
     }
 
-    public function getMetadataRegistry() : Metadata\Registry {
-        return $this->metadataRegistry ?? $this->metadataRegistry = $this->factory->createMetadataRegistry(
+    public function getMetadataProvider() : Metadata\Provider {
+        return $this->metadataProvider ?? $this->metadataProvider = $this->factory->createMetadataProvider(
             $this->getMetadataCompiler(),
-            $this->factory->createCacheStorage('metadata', [Metadata\Registry::class, 'serialize'])
+            $this->factory->createCacheStorage('metadata', [Metadata\Provider::class, 'serialize'])
         );
     }
 
@@ -153,7 +153,7 @@ class Container {
     public function getTranslator() : SQL\Translator {
         return $this->translator ?? $this->translator = $this->factory->createTranslator(
             $this->getASTParser(),
-            $this->getMetadataRegistry(),
+            $this->getMetadataProvider(),
             $this->getPlatform(),
             $this->getEventDispatcher(),
             $this->factory->createCacheStorage('query', [SQL\Translator::class, 'serialize'])
@@ -193,7 +193,7 @@ class Container {
 
     public function getASTBuilder() : SQL\AST\Builder {
         return $this->astBuilder ?? $this->astBuilder = $this->factory->createASTBuilder(
-                $this->getMetadataRegistry(),
+                $this->getMetadataProvider(),
                 $this->getASTParser(),
                 $this->getPlatform()
             );

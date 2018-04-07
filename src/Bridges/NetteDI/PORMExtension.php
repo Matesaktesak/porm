@@ -69,10 +69,10 @@ class PORMExtension extends CompilerExtension {
         $builder->addDefinition($this->prefix('metadata.compiler'))
             ->setFactory($this->prefix('@factory::createMetadataCompiler'));
 
-        $builder->addDefinition($this->prefix('metadata.registry'))
-            ->setFactory($this->prefix('@factory::createMetadataRegistry'))
+        $builder->addDefinition($this->prefix('metadata.provider'))
+            ->setFactory($this->prefix('@factory::createMetadataProvider'))
             ->setArguments([
-                'cacheStorage' => new Statement($this->prefix('@factory::createCacheStorage'), ['metadata', [Metadata\Registry::class, 'serialize']]),
+                'cacheStorage' => new Statement($this->prefix('@factory::createCacheStorage'), ['metadata', [Metadata\Provider::class, 'serialize']]),
             ]);
 
         $builder->addDefinition($this->prefix('metadata.namingStrategy'))
@@ -137,19 +137,19 @@ class PORMExtension extends CompilerExtension {
     private function setupEntities(ContainerBuilder $builder, array $config) : void {
         $finder = new Metadata\EntityFinder();
         $map = $finder->getEntityClassMap($config['entities']);
-        $def = $builder->getDefinition($this->prefix('metadata.registry'));
+        $def = $builder->getDefinition($this->prefix('metadata.provider'));
         $def->addSetup('setClassMap', [$map]);
 
         $factory = new Factory($config, $this->cacheDir);
         $ns = $factory->createNamingStrategy();
-        $cs = $factory->createCacheStorage('metadata', [Metadata\Registry::class, 'serialize']);
+        $cs = $factory->createCacheStorage('metadata', [Metadata\Provider::class, 'serialize']);
         $cmp = $factory->createMetadataCompiler($ns);
-        $registry = $factory->createMetadataRegistry($cmp, $cs);
-        $registry->setClassMap($map);
-        $registry->compileClassMap();
+        $provider = $factory->createMetadataProvider($cmp, $cs);
+        $provider->setClassMap($map);
+        $provider->compileClassMap();
 
         foreach (array_unique(array_filter($map)) as $entityClass) {
-            $meta = $registry->get($entityClass);
+            $meta = $provider->get($entityClass);
             $manager = $meta->getManagerClass();
 
             if ($manager && !$builder->getByType($manager)) {
@@ -161,7 +161,7 @@ class PORMExtension extends CompilerExtension {
                     foreach ($constructor->getParameters() as $param) {
                         if ($param->hasType() && $param->getType()->getName() === Metadata\Entity::class) {
                             $manager->setArguments([
-                                $param->getName() => new Statement($this->prefix('@metadata.registry::get'), [$entityClass])
+                                $param->getName() => new Statement($this->prefix('@metadata.provider::get'), [$entityClass])
                             ]);
                             break;
                         }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace PORM\SQL\AST\Visitor;
 
 use PORM\Metadata\Entity;
-use PORM\Metadata\Registry;
+use PORM\Metadata\Provider;
 use PORM\Exceptions\InvalidQueryException;
 use PORM\SQL\AST\Context;
 use PORM\SQL\AST\IVisitor;
@@ -14,11 +14,11 @@ use PORM\SQL\AST\Node;
 
 class EntityResolverVisitor implements IVisitor {
 
-    private $metadataRegistry;
+    private $metadataProvider;
 
 
-    public function __construct(Registry $registry) {
-        $this->metadataRegistry = $registry;
+    public function __construct(Provider $provider) {
+        $this->metadataProvider = $provider;
     }
 
 
@@ -61,11 +61,11 @@ class EntityResolverVisitor implements IVisitor {
             [$alias, $relation] = explode('.', $node->name->value, 2);
 
             if ($query->hasMappedEntity($alias)) {
-                $meta = $this->metadataRegistry->get($query->getMappedEntity($alias));
+                $meta = $this->metadataProvider->get($query->getMappedEntity($alias));
 
                 if ($meta->hasRelation($relation)) {
                     $info = $meta->getRelationInfo($relation);
-                    $target = $this->metadataRegistry->get($info['target']);
+                    $target = $this->metadataProvider->get($info['target']);
 
                     if ($expr) {
                         $expr->setRelationInfo($alias, $relation);
@@ -76,8 +76,8 @@ class EntityResolverVisitor implements IVisitor {
             } else {
                 throw new InvalidQueryException("Unknown alias '$alias'");
             }
-        } else if ($this->metadataRegistry->has($node->name->value)) {
-            $target = $this->metadataRegistry->get($node->name->value);
+        } else if ($this->metadataProvider->has($node->name->value)) {
+            $target = $this->metadataProvider->get($node->name->value);
         } else {
             return;
         }
