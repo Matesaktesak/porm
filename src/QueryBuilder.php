@@ -87,8 +87,19 @@ class QueryBuilder {
         return $this->join($relation, $alias, $condition, 'INNER');
     }
 
-    public function where(array $where) : self {
+    public function where(?array $where) : self {
         $this->where = $where;
+        return $this;
+    }
+
+    public function andWhere(array $where) : self {
+        $this->where[] = $where;
+        return $this;
+    }
+
+    public function orWhere(array $where) : self {
+        $this->where[] = 'OR';
+        $this->where[] = $where;
         return $this;
     }
 
@@ -102,17 +113,17 @@ class QueryBuilder {
         return $this;
     }
 
-    public function orderBy(array $orderBy) : self {
+    public function orderBy(?array $orderBy) : self {
         $this->orderBy = $orderBy;
         return $this;
     }
 
-    public function limit(int $limit) : self {
+    public function limit(?int $limit) : self {
         $this->limit = $limit;
         return $this;
     }
 
-    public function offset(int $offset) : self {
+    public function offset(?int $offset) : self {
         $this->offset = $offset;
         return $this;
     }

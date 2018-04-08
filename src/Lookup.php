@@ -4,29 +4,24 @@ declare(strict_types=1);
 
 namespace PORM;
 
-
 use PORM\Exceptions\NoResultException;
+
 
 class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
 
-    private $where = null;
+    private $manager;
 
-    private $orderBy = null;
+    private $queryBuilder;
 
-    private $limit = null;
+    private $metadata;
 
-    private $offset = null;
+    private $alias;
 
     private $associateBy = null;
 
     private $relations = [];
 
     private $aggregations = [];
-
-
-    private $manager;
-
-    private $metadata;
 
     /** @var \Generator|array */
     private $result = null;
@@ -36,52 +31,41 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
 
 
 
-    public static function empty(EntityManager $manager, Metadata\Entity $metadata) : self {
-        $lookup = new static($manager, $metadata);
-        $lookup->result = [];
-        $lookup->count = 0;
-        return $lookup;
-    }
-
-    public function __construct(EntityManager $manager, Metadata\Entity $metadata, ?array $where = null, $orderBy = null, ?int $limit = null, ?int $offset = null, ?string $associateBy = null) {
+    public function __construct(EntityManager $manager, Metadata\Entity $metadata, ?string $alias = null) {
         $this->manager = $manager;
+        $this->queryBuilder = $manager->createQueryBuilder($metadata, $alias);
         $this->metadata = $metadata;
-        $this->where = $where;
-        $this->orderBy = $orderBy;
-        $this->limit = $limit;
-        $this->offset = $offset;
-        $this->associateBy = $associateBy;
+        $this->alias = $alias;
     }
 
 
-    public function where(?array $where) : self {
-        $this->where = $where;
+    public function where(array $where) : self {
+        $this->queryBuilder->where($where);
         return $this;
     }
 
     public function andWhere(array $where) : self {
-        $this->where[] = $where;
+        $this->queryBuilder->andWhere($where);
         return $this;
     }
 
     public function orWhere(array $where) : self {
-        $this->where[] = 'or';
-        $this->where[] = $where;
+        $this->queryBuilder->orWhere($where);
         return $this;
     }
 
     public function orderBy($orderBy) : self {
-        $this->orderBy = is_array($orderBy) ? $orderBy : [$orderBy];
+        $this->queryBuilder->orderBy(is_array($orderBy) ? $orderBy : [$orderBy]);
         return $this;
     }
 
-    public function limit(?int $limit) : self {
-        $this->limit = $limit;
+    public function limit(int $limit) : self {
+        $this->queryBuilder->limit($limit);
         return $this;
     }
 
-    public function offset(?int $offset) : self {
-        $this->offset = $offset;
+    public function offset(int $offset) : self {
+        $this->queryBuilder->offset($offset);
         return $this;
     }
 
@@ -90,18 +74,28 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
         return $this;
     }
 
-    public function with(string ... $relations) : self {
-        $this->relations = array_fill_keys($relations, false) + $this->relations;
+    public function join($relation, ?string $alias = null, string $type = 'LEFT') : self {
+        $this->queryBuilder->join($relation instanceof Lookup ? $relation->getQueryBuilder() : $relation, $alias, null, $type);
         return $this;
     }
 
-    public function onlyWith(string ... $relations) : self {
-        $this->relations = array_fill_keys($relations, true) + $this->relations;
+    public function leftJoin($relation, ?string $alias = null) : self {
+        $this->queryBuilder->leftJoin($relation instanceof Lookup ? $relation->getQueryBuilder() : $relation, $alias);
+        return $this;
+    }
+
+    public function innerJoin($relation, ?string $alias = null) : self {
+        $this->queryBuilder->innerJoin($relation instanceof Lookup ? $relation->getQueryBuilder() : $relation, $alias);
+        return $this;
+    }
+
+    public function with(string ... $relations) : self {
+        array_push($this->relations, ... array_diff($relations, $this->relations));
         return $this;
     }
 
     public function withAggregate(string ... $properties) : self {
-        array_push($this->aggregations, ... $properties);
+        array_push($this->aggregations, ... array_diff($properties, $this->aggregations));
         return $this;
     }
 
@@ -122,51 +116,12 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
         return array_column($this->result, $property, $key);
     }
 
-    public function update(array $data) : int {
-        return $this->manager->updateLookup($this, $data);
+
+
+
+    public function getQueryBuilder() : QueryBuilder {
+        return $this->queryBuilder;
     }
-
-    public function delete() : int {
-        return $this->manager->deleteLookup($this);
-    }
-
-
-
-
-    public function getEntityMetadata() : Metadata\Entity {
-        return $this->metadata;
-    }
-
-    public function getWhere() : ?array {
-        return $this->where;
-    }
-
-    public function getOrderBy() : ?array {
-        return $this->orderBy;
-    }
-
-    public function getLimit() : ?int {
-        return $this->limit;
-    }
-
-    public function getOffset() : ?int {
-        return $this->offset;
-    }
-
-    public function getAssociateBy() : ?string {
-        return $this->associateBy;
-    }
-
-    public function getRelations() : array {
-        return $this->relations;
-    }
-
-    public function getAggregations() : array {
-        return array_unique($this->aggregations);
-    }
-
-
-
 
     public function getIterator() : \Generator {
         $this->loadResult();
@@ -213,7 +168,7 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
 
     public function first(bool $need = false) {
         if ($this->result === null) {
-            $this->limit = 1;
+            $this->queryBuilder->limit(1);
             $this->loadResult();
         }
 
@@ -229,7 +184,43 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
 
     private function loadResult(bool $eager = false) : void {
         if ($this->result === null) {
-            $this->result = $this->manager->loadLookup($this);
+            $this->result = $this->manager->execute($this->queryBuilder->getQuery(), $this->metadata);
+
+            if ($this->relations) {
+                $this->ensureArrayResult();
+                $this->manager->loadRelations($this->metadata, $this->result, ... $this->relations);
+                $eager = false;
+            }
+
+            if ($this->aggregations) {
+                $this->ensureArrayResult();
+                $this->manager->loadAggregate($this->metadata, $this->result, ... $this->aggregations);
+                $eager = false;
+            }
+
+            if ($this->associateBy) {
+                $associateBy = preg_split('/\||(\[])/', $this->associateBy, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+                $result = $this->result;
+                $this->result = [];
+                $this->count = 0;
+                $eager = false;
+
+                foreach ($result as $entity) {
+                    ++$this->count;
+                    $cursor = &$this->result;
+
+                    foreach ($associateBy as $prop) {
+                        if ($prop === '[]') {
+                            $cursor = &$cursor[];
+                        } else {
+                            $cursor = &$cursor[$entity->$prop];
+                        }
+                    }
+
+                    $cursor = $entity;
+                    unset($cursor);
+                }
+            }
         }
 
         if ($eager) {
@@ -249,7 +240,16 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
                 $this->ensureArrayResult();
                 $this->count = count($this->result);
             } else {
-                $this->count = $this->manager->countLookup($this);
+                $field = ($this->alias ? $this->alias . '.' : '') . ($this->metadata->getSingleIdentifierProperty(false) ?? '*');
+
+                $qb = clone $this->queryBuilder;
+                $qb->select(['_count' => new SQL\Expression('COUNT(' . $field . ')')])
+                    ->orderBy(null)
+                    ->limit(null)
+                    ->offset(null);
+
+                $result = $this->manager->execute($qb->getQuery());
+                $this->count = (int) $result->fetchSingle();
             }
         }
     }

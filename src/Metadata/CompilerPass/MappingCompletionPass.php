@@ -18,7 +18,7 @@ class MappingCompletionPass implements ICompilerPass {
 
     private function completeMappingInfo(\ReflectionClass $entity, array & $meta) : void {
         $meta['propertyMap'] = [];
-        $meta['columnMap'] = [];
+        $meta['fieldMap'] = [];
         $meta['relationMap'] = [];
         $meta['identifierProperties'] = [];
         $meta['generatedProperty'] = null;
@@ -30,8 +30,8 @@ class MappingCompletionPass implements ICompilerPass {
         }
 
         foreach ($meta['properties'] as $prop => $info) {
-            $meta['columnMap'][$info['column']] = $prop;
-            $meta['propertyMap'][$prop] = $info['column'];
+            $meta['fieldMap'][$info['field']] = $prop;
+            $meta['propertyMap'][$prop] = $info['field'];
 
             if (!empty($info['id'])) {
                 $meta['identifierProperties'][] = $prop;

@@ -7,12 +7,10 @@ namespace PORM\SQL\AST;
 
 interface IVisitor {
 
+    public const ENTER = 0b01,
+                 LEAVE = 0b10,
+                 BOTH  = 0b11;
+
     public function getNodeTypes() : array;
-
-    public function init() : void;
-
-    public function enter(Node\Node $node, Context $context) : void;
-
-    public function leave(Node\Node $node, Context $context) : void;
 
 }

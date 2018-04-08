@@ -37,6 +37,14 @@ class Context {
         return $this->walker->getDepth();
     }
 
+    public function getPreviousSibling() : ?Node\Node {
+        return $this->walker->getPreviousSibling();
+    }
+
+    public function getNextSibling() : ?Node\Node {
+        return $this->walker->getNextSibling();
+    }
+
     public function getParent(string ... $types) : ?Node\Node {
         return $this->walker->getParentNode(... $types);
     }

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace PORM\SQL\AST;
 
 use PORM\Drivers\IPlatform;
-use PORM\Lookup;
-use PORM\Metadata\Entity;
 use PORM\Metadata\Provider;
 use PORM\SQL\Expression;
 use PORM\Exceptions\InvalidQueryException;
@@ -26,58 +24,6 @@ class Builder {
         $this->metadataProvider = $metadataProvider;
         $this->parser = $parser;
         $this->platform = $platform;
-    }
-
-
-    public function buildLookupSelectQuery(Lookup $lookup, bool $onlyCount = false) : Node\SelectQuery {
-        $meta = $lookup->getEntityMetadata();
-
-        if ($onlyCount) {
-            $id = $meta->getSingleIdentifierProperty() ?: '*';
-            $fields = ['_count' => new Expression('COUNT(_o.' . $id . ')')];
-        } else {
-            $fields = $meta->getProperties();
-        }
-
-        $query = $this->buildSelectQuery(
-            $meta->getEntityClass(),
-            '_o',
-            $fields,
-            $lookup->getWhere(),
-            $lookup->getOrderBy(),
-            $lookup->getLimit(),
-            $lookup->getOffset()
-        );
-
-        $this->joinRequiredRelations($query, $meta, '_o', $lookup->getRelations());
-
-        return $query;
-    }
-
-    public function buildLookupUpdateQuery(Lookup $lookup, array $data) : Node\UpdateQuery {
-        $meta = $lookup->getEntityMetadata();
-
-        return $this->buildUpdateQuery(
-            $meta->getEntityClass(),
-            '_o',
-            $meta->getPropertiesInfo(),
-            $data,
-            $lookup->getWhere(),
-            $lookup->getOrderBy(),
-            $lookup->getLimit(),
-            $lookup->getOffset()
-        );
-    }
-
-    public function buildLookupDeleteQuery(Lookup $lookup) : Node\DeleteQuery {
-        return $this->buildDeleteQuery(
-            $lookup->getEntityMetadata()->getEntityClass(),
-            '_o',
-            $lookup->getWhere(),
-            $lookup->getOrderBy(),
-            $lookup->getLimit(),
-            $lookup->getOffset()
-        );
     }
 
 
@@ -199,54 +145,6 @@ class Builder {
         $query->offset = $offset !== null ? Node\Literal::int($offset) : null;
     }
 
-
-
-    private function joinRequiredRelations(Node\SelectQuery $query, Entity $meta, ?string $alias = null, array $relations) : void {
-        $alias = $alias ? $alias . '.' : '';
-        $id = $meta->getSingleIdentifierProperty();
-        $sub = 0;
-
-        if (!$id) {
-            return;
-        }
-
-        foreach (array_keys(array_filter($relations)) as $relation) {
-            if ($meta->hasRelation($relation)) {
-                $info = $meta->getRelationInfo($relation);
-                $relMeta = $this->metadataProvider->get($info['target']);
-
-                if (!empty($info['collection'])) {
-                    if (!$relMeta->hasRelationTarget($meta->getEntityClass(), $relation)) {
-                        throw new InvalidQueryException("Unable to determine inverse relation parameters for relation '$relation' of entity {$meta->getEntityClass()}");
-                    }
-
-                    $prop = $relMeta->getRelationTarget($meta->getEntityClass(), $relation);
-                    $inv = $relMeta->getRelationInfo($prop);
-                    $as = '_sub_' . $sub;
-
-                    $subq = new Node\SelectQuery();
-                    $subq->fields[] = new Node\ResultField(new Node\Identifier($as . '.' . $inv['fk']), $as . '_fk');
-                    $subq->from[] = new Node\TableExpression(new Node\TableReference($info['target']), $as);
-                    $subq->groupBy[] = new Node\Identifier($as . '.' . $inv['fk']);
-
-                    $join = new Node\JoinExpression(new Node\SubqueryExpression($subq), Node\JoinExpression::JOIN_INNER);
-                    $join->alias = new Node\Identifier('_rel_' . $sub);
-                    $join->condition = new Node\BinaryExpression(
-                        new Node\Identifier('_rel_' . $sub . '.' . $as . '_fk'),
-                        '=',
-                        new Node\Identifier($alias . $id)
-                    );
-
-                    $query->from[] = $join;
-                    $sub++;
-                } else {
-                    $query->from[] = new Node\JoinExpression(new Node\TableReference($info['target']), Node\JoinExpression::JOIN_INNER);
-                }
-            } else {
-                throw new InvalidQueryException("Entity {$meta->getEntityClass()} has no relation '$relation'");
-            }
-        }
-    }
 
 
     private function buildAssignmentExpressionList(array $info, ?array $data, ?string $alias = null) : array {

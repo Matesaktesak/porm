@@ -5,22 +5,26 @@ declare(strict_types=1);
 namespace PORM\SQL\AST\Visitor;
 
 use PORM\Exceptions\InvalidQueryException;
+use PORM\Metadata\Provider;
 use PORM\SQL\AST\Context;
-use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\IEnterVisitor;
 use PORM\SQL\AST\Node;
 
 
-class IdentifierResolverVisitor implements IVisitor {
+class IdentifierResolverVisitor implements IEnterVisitor {
+
+    private $metadataProvider;
+
+
+    public function __construct(Provider $metadataProvider) {
+        $this->metadataProvider = $metadataProvider;
+    }
 
 
     public function getNodeTypes() : array {
         return [
             Node\Identifier::class,
         ];
-    }
-
-    public function init() : void {
-
     }
 
     public function enter(Node\Node $node, Context $context) : void {
@@ -32,10 +36,10 @@ class IdentifierResolverVisitor implements IVisitor {
 
         if (strpos($node->value, '.') !== false) {
             /** @var string $alias */
-            [$alias, $property] = explode('.', $node->value);
+            @list($alias, $property, $sub) = explode('.', $node->value);
         } else {
             $property = $node->value;
-            $alias = null;
+            $alias = $sub = null;
         }
 
         if ($property === '*') {
@@ -52,10 +56,17 @@ class IdentifierResolverVisitor implements IVisitor {
 
             if ($query) {
                 $fields = $query->getMappedResourceFields($alias);
+                $entity = $query->hasMappedEntity($alias) ? $query->getMappedEntity($alias) : null;
+                $meta = $entity ? $this->metadataProvider->get($entity) : null;
 
                 if (isset($fields[$property])) {
-                    $info = $fields[$property];
-                    $entity = $query->hasMappedEntity($alias) ? $query->getMappedEntity($alias) : null;
+                    if (!$sub) {
+                        $info = $fields[$property];
+                    } else {
+                        throw new InvalidQueryException("Property '{$alias}.{$property}' has no subfields");
+                    }
+                } else if ($meta && $meta->hasRelation($property)) {
+
                 } else {
                     throw new InvalidQueryException("Unknown field: '{$node->value}'");
                 }
@@ -88,10 +99,6 @@ class IdentifierResolverVisitor implements IVisitor {
         if (isset($entity)) {
             $node->setMappingInfo($entity, $property);
         }
-    }
-
-    public function leave(Node\Node $node, Context $context) : void {
-
     }
 
 }

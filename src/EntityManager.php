@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace PORM;
 
-use PORM\Hydrator\ArrayHydrator;
-use PORM\Hydrator\MixedHydrator;
-use PORM\SQL\Expression;
-
 
 class EntityManager {
 
@@ -72,8 +68,8 @@ class EntityManager {
 
 
 
-    public function find($entity, ?array $where = null, $orderBy = null, ?int $limit = null, ?int $offset = null, ?string $associateBy = null) : Lookup {
-        return new Lookup($this, $this->normalizeMeta($entity), $where, $orderBy, $limit, $offset, $associateBy);
+    public function find($entity, ?string $alias = null) : Lookup {
+        return new Lookup($this, $this->normalizeMeta($entity), $alias);
     }
 
 
@@ -160,7 +156,7 @@ class EntityManager {
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postUpdate', $object, $this, $changeset);
             }
 
-            if ($prop = $meta->getSingleIdentifierProperty()) {
+            if ($prop = $meta->getSingleIdentifierProperty(false)) {
                 $localId = $meta->getReflection($prop)->getValue($object);
             } else {
                 return;
@@ -200,6 +196,10 @@ class EntityManager {
                         $this->execute($query);
                     }
                 }
+            }
+
+            if ($started) {
+                $this->connection->commit();
             }
         } catch (\Throwable $e) {
             if ($started) {
@@ -275,78 +275,6 @@ class EntityManager {
     }
 
 
-    public function loadLookup(Lookup $lookup) : \Generator {
-        $ast = $this->astBuilder->buildLookupSelectQuery($lookup);
-        $query = $this->translator->compile($ast);
-
-        $result = $this->execute($query);
-        $meta = $lookup->getEntityMetadata();
-        $result->addProcessor(new Hydrator\EntityHydrator($this, $meta));
-
-        if ($relations = $lookup->getRelations()) {
-            $result = iterator_to_array($result, false);
-            $this->loadRelations($meta, $result, ... array_keys($relations));
-        }
-
-        if ($aggregate = $lookup->getAggregations()) {
-            if (!is_array($result)) {
-                $result = iterator_to_array($result);
-            }
-
-            $this->loadAggregate($meta, $result, ... $aggregate);
-        }
-
-        if ($associateBy = $lookup->getAssociateBy()) {
-            $associateBy = preg_split('/\||(\[])/', $associateBy, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
-            $root = [];
-
-            foreach ($result as $entity) {
-                $cursor = &$root;
-
-                foreach ($associateBy as $prop) {
-                    if ($prop === '[]') {
-                        $cursor = &$cursor[];
-                    } else {
-                        $cursor = &$cursor[$entity->$prop];
-                    }
-                }
-
-                $cursor = $entity;
-                unset($cursor);
-            }
-
-            yield from $root;
-        } else {
-            yield from $result;
-        }
-    }
-
-
-    public function countLookup(Lookup $lookup) : int {
-        $ast = $this->astBuilder->buildLookupSelectQuery($lookup, true);
-        $query = $this->translator->compile($ast);
-        $result = $this->execute($query);
-        $count = $result ? $result->fetchSingle() : null;
-        return $count !== null ? (int) $count : 0;
-    }
-
-
-    public function updateLookup(Lookup $lookup, array $data) : int {
-        $ast = $this->astBuilder->buildLookupUpdateQuery($lookup, $data);
-        $query = $this->translator->compile($ast);
-        $this->execute($query);
-        return $this->connection->getAffectedRows();
-    }
-
-
-    public function deleteLookup(Lookup $lookup) : int {
-        $ast = $this->astBuilder->buildLookupDeleteQuery($lookup);
-        $query = $this->translator->compile($ast);
-        $this->execute($query);
-        return $this->connection->getAffectedRows();
-    }
-
-
     public function createQueryBuilder($entity = null, ?string $alias = null) : QueryBuilder {
         return new QueryBuilder($this->translator, $this->astBuilder, $entity ? $this->normalizeMeta($entity) : null, $alias);
     }
@@ -367,11 +295,15 @@ class EntityManager {
         return $this->execute($query);
     }
 
-    public function execute(SQL\Query $query) : ?SQL\ResultSet {
+    public function execute(SQL\Query $query, ?Metadata\Entity $entity = null) : ?SQL\ResultSet {
         $result = $this->connection->query($query->getSql(), $this->mapper->convertToDb($query->getParameters(), $query->getParameterMap()));
 
         if ($result) {
-            $result->addProcessor(new ArrayHydrator($this->mapper, $query->getResultMap()));
+            $result->addProcessor(new Hydrator\ArrayHydrator($this->mapper, $query->getResultMap()));
+
+            if ($entity) {
+                $result->addProcessor(new Hydrator\EntityHydrator($this, $entity));
+            }
         }
 
         return $result;
@@ -519,10 +451,6 @@ class EntityManager {
             $mapBy = $identifier;
             $attachBy = $info['fk'];
 
-            if (!$identifier) {
-                throw new \RuntimeException("Target entity {$target->getEntityClass()} of relation {$meta->getEntityClass()}#{$relation} has " . ($meta->getIdentifierProperties() ? 'a composite' : 'no') . ' identifier');
-            }
-
             $ids = Helpers::extractPropertyFromEntities($meta, $entities, $info['fk'], true);
 
             if (!$ids) {
@@ -544,10 +472,6 @@ class EntityManager {
             $attachBy = $identifier;
             $collection = true;
 
-            if (!$identifier) {
-                throw new \RuntimeException("Entity {$meta->getEntityClass()} has " . ($meta->getIdentifierProperties() ? 'a composite' : 'no') . ' identifier');
-            }
-
             $ids = Helpers::extractPropertyFromEntities($meta, $entities, $identifier, true);
 
             if (!$ids) {
@@ -561,7 +485,7 @@ class EntityManager {
                 );
 
                 $builder->innerJoin($info['via']['table'], '_x', [
-                    '_x.' . $info['via']['remoteColumn'] => new Expression('_r.' . $target->getSingleIdentifierProperty()),
+                    '_x.' . $info['via']['remoteColumn'] => new SQL\Expression('_r.' . $target->getSingleIdentifierProperty()),
                 ]);
 
                 $where = [
@@ -591,7 +515,7 @@ class EntityManager {
         $builder->where($where);
 
         $result = $this->execute($builder->getQuery());
-        $result->addProcessor(new MixedHydrator($this, $target));
+        $result->addProcessor(new Hydrator\MixedHydrator($this, $target));
         $iprop = $meta->getReflection($attachBy);
         $rprop = $meta->getReflection($relation);
         $map = [];
@@ -634,11 +558,6 @@ class EntityManager {
         }
 
         $identifier = $meta->getSingleIdentifierProperty();
-
-        if (!$identifier) {
-            throw new \RuntimeException("Entity {$meta->getEntityClass()} has " . ($meta->getIdentifierProperties() ? 'a composite' : 'no') . ' identifier');
-        }
-
         $ids = Helpers::extractPropertyFromEntities($meta, $entities, $identifier, true);
 
         if (!$ids) {
@@ -648,22 +567,24 @@ class EntityManager {
         $builder = $this->createQueryBuilder();
 
         if (!empty($inverse['collection'])) {
-            if ($info['property'] === $target->getSingleIdentifierProperty() && empty($info['where'])) {
+            $tid = $target->getSingleIdentifierProperty();
+
+            if ($info['property'] === $tid && empty($info['where'])) {
                 $builder->select([
                     '_id' => '_x.' . $inverse['via']['remoteColumn'],
-                    '_value' => new Expression($info['type'] . '(_x.' . $inverse['via']['localColumn'] . ')'),
+                    '_value' => new SQL\Expression($info['type'] . '(_x.' . $inverse['via']['localColumn'] . ')'),
                 ]);
 
                 $builder->from($inverse['via']['table'], '_x');
             } else {
                 $builder->select([
                     '_id' => '_x.' . $inverse['via']['remoteColumn'],
-                    '_value' => new Expression($info['type'] . '(_o.' . $info['property'] . ')'),
+                    '_value' => new SQL\Expression($info['type'] . '(_o.' . $info['property'] . ')'),
                 ]);
 
                 $builder->from($inverse['via']['table'], '_x');
                 $builder->innerJoin($relation['target'], '_o', [
-                    '_o.' . $target->getSingleIdentifierProperty() => new Expression('_x.' . $inverse['via']['localColumn']),
+                    '_o.' . $tid => new SQL\Expression('_x.' . $inverse['via']['localColumn']),
                 ]);
             }
 
@@ -675,7 +596,7 @@ class EntityManager {
         } else {
             $builder->select([
                 '_id' => '_o.' . $inverse['fk'],
-                '_value' => new Expression($info['type'] . '(_o.' . $info['property'] . ')'),
+                '_value' => new SQL\Expression($info['type'] . '(_o.' . $info['property'] . ')'),
             ]);
 
             $builder->from($relation['target'], '_o');

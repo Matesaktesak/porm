@@ -121,7 +121,7 @@ class Compiler {
             $meta['relations'],
             $meta['aggregateProperties'],
             $meta['propertyMap'],
-            $meta['columnMap'],
+            $meta['fieldMap'],
             $meta['relationMap'],
             $meta['identifierProperties'],
             $meta['generatedProperty']

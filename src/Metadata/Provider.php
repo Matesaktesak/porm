@@ -149,7 +149,7 @@ class Provider {
             'relations' => 'Relations',
             'aggregateProperties' => 'Aggregate properties',
             'propertyMap' => 'Property map',
-            'columnMap' => 'Column map',
+            'fieldMap' => 'Field map',
             'relationMap' => 'Relation map',
             'identifierProperties' => 'Identifier properties',
             'generatedProperty' => 'Generated property',

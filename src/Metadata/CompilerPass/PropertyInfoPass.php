@@ -36,7 +36,7 @@ class PropertyInfoPass implements ICompilerPass {
         Compiler $compiler
     ) : array {
         $info = [
-            'column' => $annotation[0]
+            'field' => $annotation[0]
                 ?? $annotation['name']
                 ?? $compiler->getNamingStrategy()->formatColumnName($entity, $property, $compiler),
         ];

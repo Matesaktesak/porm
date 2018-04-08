@@ -19,7 +19,7 @@ class Mapper {
         $properties = $meta->getIdentifierProperties();
 
         if (empty($properties)) {
-            throw new \LogicException("Entity " . $meta->getEntityClass() . " has no identifier columns");
+            throw new \LogicException("Entity " . $meta->getEntityClass() . " has no identifier properties");
         }
 
         return $this->extract($meta, $entity, $properties);

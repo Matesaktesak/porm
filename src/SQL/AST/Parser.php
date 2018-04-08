@@ -26,7 +26,7 @@ class Parser {
             'LIKE|CONTAINS|(?:NOT\s+)?IN|NOT|DISTINCT|ASC|DESC|UNION(?:\s+ALL)?)\b',
         self::T_SYMBOL => '[<>!]=|[-+/*%=<>(),*]',
         self::T_LITERAL => 'TRUE|FALSE|NULL|(?:[1-9]\d+|\d)(?:\.\d+)?|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"',
-        self::T_IDENTIFIER => '[a-z_][a-z0-9_]*(?:(?::[a-z_][a-z0-9_]*)+|(?:\.[a-z_][a-z0-9_]*)+)?',
+        self::T_IDENTIFIER => '[a-z_][a-z0-9_]*(?::[a-z_][a-z0-9_]*|(?:\.[a-z_][a-z0-9_]*)+|\.\*)?',
         self::T_PARAMETER => '\?|:[a-z][a-z0-9_]*',
         self::T_WHITESPACE => '\s++',
     ];

@@ -7,11 +7,11 @@ namespace PORM\SQL\AST\Visitor;
 use PORM\Metadata\Provider;
 use PORM\Exceptions\InvalidQueryException;
 use PORM\SQL\AST\Context;
-use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\IEnterVisitor;
 use PORM\SQL\AST\Node;
 
 
-class JoinConditionResolverVisitor implements IVisitor {
+class JoinConditionResolverVisitor implements IEnterVisitor {
 
     private $metadataProvider;
 
@@ -25,10 +25,6 @@ class JoinConditionResolverVisitor implements IVisitor {
         return [
             Node\JoinExpression::class,
         ];
-    }
-
-    public function init() : void {
-
     }
 
     public function enter(Node\Node $node, Context $context) : void {
@@ -45,10 +41,6 @@ class JoinConditionResolverVisitor implements IVisitor {
             if (isset($info1['fk'])) {
                 $id2 = $meta2->getSingleIdentifierProperty();
 
-                if (!$id2) {
-                    throw new InvalidQueryException("Failed to complete join condition to entity with " . ($meta2->getIdentifierProperties() ? 'complex' : 'no') . " identifier");
-                }
-
                 $node->condition = new Node\BinaryExpression(
                     new Node\Identifier($alias . '.' . $id2),
                     '=',
@@ -59,10 +51,6 @@ class JoinConditionResolverVisitor implements IVisitor {
                 $info2 = $meta2->getRelationInfo($target);
                 $id1 = $meta1->getSingleIdentifierProperty();
 
-                if (!$id1) {
-                    throw new InvalidQueryException("Failed to complete join condition from entity with " . ($meta1->getIdentifierProperties() ? 'complex' : 'no') . " identifier");
-                }
-
                 $node->condition = new Node\BinaryExpression(
                     new Node\Identifier($alias . '.' . $info2['fk']),
                     '=',
@@ -72,10 +60,6 @@ class JoinConditionResolverVisitor implements IVisitor {
                 throw new InvalidQueryException("Failed to complete join condition, no relation info available");
             }
         }
-    }
-
-    public function leave(Node\Node $node, Context $context) : void {
-
     }
 
 }

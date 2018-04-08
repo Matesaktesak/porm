@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace PORM\SQL\AST\Visitor;
 
 use PORM\SQL\AST\Context;
-use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\IEnterVisitor;
+use PORM\SQL\AST\ILeaveVisitor;
 use PORM\SQL\AST\Node;
 
 
-class CallbackVisitor implements IVisitor {
+class CallbackVisitor implements IEnterVisitor, ILeaveVisitor {
 
     private $enter;
 
@@ -36,10 +37,6 @@ class CallbackVisitor implements IVisitor {
 
     public function getNodeTypes() : array {
         return $this->nodeTypes;
-    }
-
-    public function init() : void {
-
     }
 
     public function enter(Node\Node $node, Context $context) : void {

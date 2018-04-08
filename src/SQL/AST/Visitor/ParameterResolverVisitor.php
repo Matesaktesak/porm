@@ -6,11 +6,11 @@ namespace PORM\SQL\AST\Visitor;
 
 use PORM\Exceptions\InvalidQueryException;
 use PORM\SQL\AST\Context;
-use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\IEnterVisitor;
 use PORM\SQL\AST\Node;
 
 
-class ParameterResolverVisitor implements IVisitor {
+class ParameterResolverVisitor implements IEnterVisitor {
 
     private $parameterContainerPredicate;
 
@@ -28,10 +28,6 @@ class ParameterResolverVisitor implements IVisitor {
             Node\ParameterReference::class,
             Node\NamedParameterReference::class,
         ];
-    }
-
-    public function init() : void {
-
     }
 
     public function enter(Node\Node $node, Context $context) : void {
@@ -85,10 +81,6 @@ class ParameterResolverVisitor implements IVisitor {
         }
 
         $node->setId($id);
-    }
-
-    public function leave(Node\Node $node, Context $context) : void {
-
     }
 
 }

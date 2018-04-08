@@ -96,9 +96,10 @@ class Translator {
         if ($this->visitors === null) {
             $this->visitors[] = [
                 new AST\Visitor\EntityResolverVisitor($this->metadataProvider),
+                new AST\Visitor\AssignmentJoiningVisitor($this->metadataProvider),
                 new AST\Visitor\SubqueryMappingVisitor(),
                 new AST\Visitor\JoinConditionResolverVisitor($this->metadataProvider),
-                new AST\Visitor\IdentifierResolverVisitor(),
+                new AST\Visitor\IdentifierResolverVisitor($this->metadataProvider),
                 new AST\Visitor\ResultMappingVisitor(),
             ];
 

@@ -6,57 +6,84 @@ namespace PORM\SQL\AST\Visitor;
 
 use PORM\Exceptions\InvalidQueryException;
 use PORM\SQL\AST\Context;
-use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\IEnterVisitor;
+use PORM\SQL\AST\ILeaveVisitor;
 use PORM\SQL\AST\Node;
 
 
-class ResultMappingVisitor implements IVisitor {
+class ResultMappingVisitor implements IEnterVisitor, ILeaveVisitor {
 
     public function getNodeTypes() : array {
         return [
-            Node\ResultField::class,
+            Node\SelectQuery::class,
+            Node\InsertQuery::class,
+            Node\UpdateQuery::class,
+            Node\DeleteQuery::class,
         ];
     }
 
-    public function init() : void {
-
-    }
-
     public function enter(Node\Node $node, Context $context) : void {
+        /** @var Node\Query $node */
+        $src = $context->getNodeType() === Node\SelectQuery::class ? 'fields' : 'returning';
 
+        for ($i = 0, $n = count($node->$src); $i < $n; $i++) {
+            /** @var Node\ResultField $field */
+            $field = $node->$src[$i];
+
+            if ($field->value instanceof Node\Identifier && preg_match('~^([^.]+)\.\*$~', $field->value->value, $m)) {
+                if ($node->hasMappedResource($m[1])) {
+                    $fields = $node->getMappedResourceFields($m[1]);
+                    $tmp = [];
+                    $c = -1;
+
+                    foreach ($fields as $prop => $info) {
+                        $tmp[] = new Node\ResultField(new Node\Identifier($m[1] . '.' . $prop));
+                        $c++;
+                    }
+
+                    array_splice($node->$src, $i, 1, $tmp);
+                    $i += $c;
+                    $n += $c;
+                } else {
+                    throw new InvalidQueryException("Unknown alias '{$m[1]}' in expression '{$field->value->value}'");
+                }
+            }
+        }
     }
 
     public function leave(Node\Node $node, Context $context) : void {
-        /** @var Node\ResultField $node */
-        $query = $context->getClosestQueryNode();
+        /** @var Node\Query $node */
+        $src = $context->getNodeType() === Node\SelectQuery::class ? 'fields' : 'returning';
 
-        if ($node->alias) {
-            $field = $alias = $node->alias->value;
-        } else {
-            if ($node->value instanceof Node\Identifier) {
-                $ident = $node->value;
-            } else if ($node->value instanceof Node\UnaryExpression && $node->value->argument instanceof Node\Identifier) {
-                $ident = $node->value->argument;
+        foreach ($node->$src as $field) { /** @var Node\ResultField $field */
+            if ($field->alias) {
+                $name = $alias = $field->alias->value;
             } else {
-                throw new InvalidQueryException("Missing alias for result field");
+                if ($field->value instanceof Node\Identifier) {
+                    $ident = $field->value;
+                } else if ($field->value instanceof Node\UnaryExpression && $field->value->argument instanceof Node\Identifier) {
+                    $ident = $field->value->argument;
+                } else {
+                    throw new InvalidQueryException("Missing alias for result field");
+                }
+
+                if (strpos($ident->value, '.') !== false) {
+                    list (, $name) = explode('.', $ident->value, 2);
+                } else {
+                    $name = $ident->value;
+                }
+
+                if ($ident->hasMappingInfo()) {
+                    $mapping = $ident->getMappingInfo();
+                    $alias = $mapping['property'];
+                } else {
+                    $alias = $name;
+                }
             }
 
-            if (strpos($ident->value, '.') !== false) {
-                list (, $field) = explode('.', $ident->value, 2);
-            } else {
-                $field = $ident->value;
-            }
-
-            if ($ident->hasMappingInfo()) {
-                $mapping = $ident->getMappingInfo();
-                $alias = $mapping['property'];
-            } else {
-                $alias = $field;
-            }
+            $info = $field->value instanceof Node\Identifier && $field->value->hasTypeInfo() ? $field->value->getTypeInfo() : null;
+            $node->mapResultField($name, $alias, $info['type'] ?? null, $info['nullable'] ?? null);
         }
-
-        $info = $node->value instanceof Node\Identifier && $node->value->hasTypeInfo() ? $node->value->getTypeInfo() : null;
-        $query->mapResultField($field, $alias, $info['type'] ?? null, $info['nullable'] ?? null);
     }
 
 

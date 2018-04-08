@@ -32,7 +32,7 @@ class Entity {
     private $identifierProperties;
 
     /** @var array */
-    private $columnMap;
+    private $fieldMap;
 
     /** @var array */
     private $propertyMap;
@@ -72,7 +72,7 @@ class Entity {
         $this->relations = $relations;
         $this->aggregateProperties = $aggregateProperties;
         $this->propertyMap = $propertyMap;
-        $this->columnMap = $columnMap;
+        $this->fieldMap = $columnMap;
         $this->relationMap = $relationMap;
         $this->identifierProperties = $identifierProperties;
         $this->generatedProperty = $generatedProperty;
@@ -119,8 +119,14 @@ class Entity {
         return $this->identifierProperties;
     }
 
-    public function getSingleIdentifierProperty() : ?string {
-        return count($this->identifierProperties) === 1 ? reset($this->identifierProperties) : null;
+    public function getSingleIdentifierProperty(bool $need = true) : ?string {
+        if (($n = count($this->identifierProperties)) === 1) {
+            return reset($this->identifierProperties);
+        } else if ($need) {
+            throw new \RuntimeException("Entity '{$this->entityClass}' has " . ($n ? 'a composite' : 'no') . " identifier");
+        } else {
+            return null;
+        }
     }
 
     public function getPropertyInfo(string $property) : array {
@@ -143,24 +149,24 @@ class Entity {
         return isset($this->propertyMap[$property]);
     }
 
-    public function getColumnName(string $property) : string {
+    public function getFieldName(string $property) : string {
         return $this->propertyMap[$property];
     }
 
-    public function getColumns() : array {
-        return array_keys($this->columnMap);
+    public function getFields() : array {
+        return array_keys($this->fieldMap);
     }
 
-    public function getColumnMap() : array {
-        return $this->columnMap;
+    public function getFieldMap() : array {
+        return $this->fieldMap;
     }
 
-    public function hasColumn(string $column) : bool {
-        return isset($this->columnMap[$column]);
+    public function hasField(string $field) : bool {
+        return isset($this->fieldMap[$field]);
     }
 
-    public function getPropertyName(string $column) : string {
-        return $this->columnMap[$column];
+    public function getPropertyName(string $field) : string {
+        return $this->fieldMap[$field];
     }
 
     public function hasGeneratedProperty() : bool {
@@ -217,7 +223,7 @@ class Entity {
             'relations',
             'aggregateProperties',
             'identifierProperties',
-            'columnMap',
+            'fieldMap',
             'propertyMap',
             'relationMap',
             'generatedProperty',

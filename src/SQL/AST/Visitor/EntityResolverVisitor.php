@@ -8,11 +8,11 @@ use PORM\Metadata\Entity;
 use PORM\Metadata\Provider;
 use PORM\Exceptions\InvalidQueryException;
 use PORM\SQL\AST\Context;
-use PORM\SQL\AST\IVisitor;
+use PORM\SQL\AST\IEnterVisitor;
 use PORM\SQL\AST\Node;
 
 
-class EntityResolverVisitor implements IVisitor {
+class EntityResolverVisitor implements IEnterVisitor {
 
     private $metadataProvider;
 
@@ -24,39 +24,45 @@ class EntityResolverVisitor implements IVisitor {
 
     public function getNodeTypes() : array {
         return [
-            Node\TableExpression::class,
-            Node\JoinExpression::class,
-            Node\TableReference::class,
+            Node\SelectQuery::class,
+            Node\InsertQuery::class,
+            Node\UpdateQuery::class,
+            Node\DeleteQuery::class,
         ];
     }
 
-
-    public function init() : void {
-
-    }
-
     public function enter(Node\Node $node, Context $context) : void {
-        if ($context->getNodeType() === Node\TableReference::class) {
-            if (empty($node->attributes['visited'])) {
-                /** @var Node\TableReference $node */
-                $this->visit($context->getClosestQueryNode(), $node, $context->getParent(Node\TableExpression::class, Node\JoinExpression::class));
-            }
-        } else {
-            /** @var Node\TableExpression|Node\JoinExpression $node */
-            if ($node->table instanceof Node\TableReference) {
-                $this->visit($context->getClosestQueryNode(), $node->table, $node);
+        switch ($context->getNodeType()) {
+            case Node\InsertQuery::class: /** @var Node\InsertQuery $node */
+                $this->visit($node, $node->into);
+                return; // visit insert query directly and return
+
+
+            case Node\SelectQuery::class: /** @var Node\SelectQuery $node */
+                $expressions = $node->from;
+                break;
+
+            case Node\UpdateQuery::class: /** @var Node\UpdateQuery $node */
+                $expressions = [$node->table];
+                break;
+
+            case Node\DeleteQuery::class: /** @var Node\DeleteQuery $node */
+                $expressions = [$node->from];
+                break;
+
+            default:
+                return;
+        }
+
+        foreach ($expressions as $expr) {
+            if ($expr->table instanceof Node\TableReference) {
+                $this->visit($node, $expr->table, $expr);
             }
         }
     }
 
-    public function leave(Node\Node $node, Context $context) : void {
-
-    }
-
 
     private function visit(Node\Query $query, Node\TableReference $node, ?Node\TableExpression $expr = null) : void {
-        $node->attributes['visited'] = true;
-
         if (strpos($node->name->value, '.')) {
             [$alias, $relation] = explode('.', $node->name->value, 2);
 
@@ -82,25 +88,8 @@ class EntityResolverVisitor implements IVisitor {
             return;
         }
 
-        $query->mapResource($this->extractFieldInfo($target), $expr->alias->value ?? null, $target->getEntityClass());
+        $query->mapResource($target->getPropertiesInfo(), $expr->alias->value ?? null, $target->getEntityClass());
         $node->name->value = $target->getTableName();
-    }
-
-
-    private function extractFieldInfo(Entity $entity) : array {
-        $fields = [];
-
-        foreach ($entity->getProperties() as $prop) {
-            $info = $entity->getPropertyInfo($prop);
-
-            $fields[$prop] = [
-                'field' => $info['column'],
-                'type' => $info['type'],
-                'nullable' => $info['nullable'],
-            ];
-        }
-
-        return $fields;
     }
 
 }

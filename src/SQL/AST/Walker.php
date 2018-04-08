@@ -36,17 +36,12 @@ class Walker {
             $this->contexts = new \SplObjectStorage();
         }
 
-        $this->contexts[$visitor] = new Context($this);
-
-        foreach ($visitor->getNodeTypes() as $type) {
-            $this->visitors[$type][] = $visitor;
-        }
+        $this->insertVisitor($this->contexts, $this->visitors, $visitor);
     }
 
 
     public function walk(Node\Node $root) : void {
         if (!empty($this->visitors)) {
-            $this->init($this->contexts);
             $this->visit($root, $this->visitors, $this->contexts);
         }
     }
@@ -56,34 +51,40 @@ class Walker {
         $map = [];
 
         foreach ($visitors as $visitor) {
-            $contexts[$visitor] = new Context($this);
-
-            foreach ($visitor->getNodeTypes() as $type) {
-                $map[$type][] = $visitor;
-            }
+            $this->insertVisitor($contexts, $map, $visitor);
         }
 
-        $this->init($contexts);
         $this->visit($root, $map, $contexts);
     }
 
 
-    private function init(\SplObjectStorage $contexts) : void {
-        foreach ($contexts as $visitor) {
-            $visitor->init();
+    private function insertVisitor(\SplObjectStorage $contexts, array & $visitors, IVisitor $visitor) : void {
+        $contexts[$visitor] = new Context($this);
+
+        if ($visitor instanceof IEnterVisitor) {
+            foreach ($visitor->getNodeTypes() as $type) {
+                $visitors[IVisitor::ENTER][$type][] = $visitor;
+            }
+        }
+
+        if ($visitor instanceof ILeaveVisitor) {
+            foreach ($visitor->getNodeTypes() as $type) {
+                $visitors[IVisitor::LEAVE][$type][] = $visitor;
+            }
         }
     }
 
 
     private function visit(Node\Node $node, array $visitors, \SplObjectStorage $contexts) : ?Node\Node {
         $class = get_class($node);
-        $nodeVisitors = $visitors[$class] ?? [];
+        $enter = $visitors[IVisitor::ENTER][$class] ?? [];
+        $leave = $visitors[IVisitor::LEAVE][$class] ?? [];
         $this->stack[] = [$class, $node];
         $this->depth++;
         $this->skip = false;
         $this->replacement = null;
 
-        foreach ($nodeVisitors as $visitor) {
+        foreach ($enter as $visitor) {
             $visitor->enter($node, $contexts[$visitor]);
 
             if ($this->replacement) {
@@ -112,7 +113,7 @@ class Walker {
                 array_shift($this->properties);
             }
 
-            foreach ($nodeVisitors as $visitor) {
+            foreach ($leave as $visitor) {
                 $visitor->leave($node, $contexts[$visitor]);
 
                 if ($this->replacement) {
