@@ -39,7 +39,7 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
     }
 
 
-    public function where(array $where) : self {
+    public function where(?array $where) : self {
         $this->queryBuilder->where($where);
         return $this;
     }
@@ -55,16 +55,16 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
     }
 
     public function orderBy($orderBy) : self {
-        $this->queryBuilder->orderBy(is_array($orderBy) ? $orderBy : [$orderBy]);
+        $this->queryBuilder->orderBy($orderBy === null || is_array($orderBy) ? $orderBy : [$orderBy]);
         return $this;
     }
 
-    public function limit(int $limit) : self {
+    public function limit(?int $limit) : self {
         $this->queryBuilder->limit($limit);
         return $this;
     }
 
-    public function offset(int $offset) : self {
+    public function offset(?int $offset) : self {
         $this->queryBuilder->offset($offset);
         return $this;
     }
