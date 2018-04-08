@@ -82,8 +82,8 @@ class Platform implements IPlatform {
             $sql[] = implode(', ', array_map(\Closure::fromCallable([$this, 'formatASTOrderExpression']), $query->orderBy));
         }
 
-        if ($query->offset) {
-            $sql[] = sprintf('OFFSET %s ROWS', $this->formatASTExpression($query->offset));
+        if ($query->offset || $query->limit) {
+            $sql[] = sprintf('OFFSET %s ROWS', $query->offset ? $this->formatASTExpression($query->offset) : 0);
         }
 
         if ($query->limit) {
