@@ -25,7 +25,7 @@ class Panel implements Tracy\IBarPanel {
 
 
     public static function renderException($e) : ?array {
-        if ($e instanceof QueryException) {
+        if ($e instanceof QueryException && $e->hasQuery()) {
             if ($e->hasParameters()) {
                 $p = '<h3>Parameters:</h3>' . Tracy\Dumper::toHtml($e->getParameters());
             } else {
