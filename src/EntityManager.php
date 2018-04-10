@@ -105,8 +105,10 @@ class EntityManager {
             $this->connection->beginTransaction();
         }
 
+        $new = empty($id);
+
         try {
-            if (empty($id)) {
+            if ($new) {
                 $driver = $this->connection->getDriver();
                 $platform = $this->connection->getPlatform();
 
@@ -173,7 +175,7 @@ class EntityManager {
                     $remote = $this->getEntityMetadata($info['target']);
                     $remoteId = $remote->getReflection($remote->getSingleIdentifierProperty());
 
-                    if ($add = $coll->getAddedEntries()) {
+                    if ($add = ($new ? $coll->toArray() : $coll->getAddedEntries())) {
                         $add = array_map(function(object $entity) use ($info, $localId, $remoteId) : array {
                             return [
                                 $info['via']['localColumn'] => $localId,
