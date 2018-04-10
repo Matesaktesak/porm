@@ -144,6 +144,8 @@ class EntityManager {
                     $meta->getReflection($genProp)->setValue($object, $id);
                 }
 
+                $this->attach($meta, $object);
+
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postPersist', $object, $this);
 
             } else if ($data) {
@@ -152,6 +154,8 @@ class EntityManager {
                 $ast = $this->astBuilder->buildUpdateQuery($meta->getEntityClass(), null, $meta->getPropertiesInfo(), $data, $id);
                 $query = $this->translator->compile($ast);
                 $this->execute($query);
+
+                $this->identityMap[$meta->getEntityClass()][$hash]['data'] = $data + $orig;
 
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postUpdate', $object, $this, $changeset);
             }
