@@ -34,11 +34,6 @@ class EventDispatcher {
             throw new \InvalidArgumentException("Invalid listener, expected an object, string or callable, got " . gettype($listener));
         }
 
-        if (!$method) {
-            $p = mb_strrpos($event, '::');
-            $method = 'handle' . ucfirst($p !== false ? mb_substr($event, $p + 2) : $event);
-        }
-
         $this->listeners[$event][] = [$listener, $method];
     }
 
@@ -46,7 +41,7 @@ class EventDispatcher {
     public function dispatch(string $event, ... $args) : void {
         $this->doDispatch($event, $args);
 
-        if (strpos($event, '::') !== false) {
+        if (mb_strpos($event, '::') !== false) {
             $event = preg_replace('/^.*(::.+)$/', '*$1', $event);
             $this->doDispatch($event, $args);
         }
@@ -55,13 +50,23 @@ class EventDispatcher {
 
     private function doDispatch(string $event, array $args) : void {
         if (!empty($this->listeners[$event])) {
-            foreach ($this->listeners[$event] as $id => $listener) {
-                if (!is_object($listener[0])) {
-                    if (is_string($listener[0])) {
-                        $this->listeners[$event][$id][0] = $listener[0] = call_user_func($this->listenerResolver, $listener[0], $event);
+            $defaultMethod = 'handle' . ucfirst(preg_replace('/^.+::/', '', $event));
+
+            foreach ($this->listeners[$event] as $id => [$listener, $method]) {
+                if (!is_object($listener) || $listener instanceof \Closure && $method) {
+                    if (is_string($listener)) {
+                        $this->listeners[$event][$id][0] = $listener = call_user_func($this->listenerResolver, $listener, $event);
                     } else {
-                        $this->listeners[$event][$id][0] = $listener[0] = call_user_func($listener[0], $event);
+                        $this->listeners[$event][$id][0] = $listener = call_user_func($listener, $event);
                     }
+
+                    if ($listener instanceof \Closure && $method) {
+                        throw new \RuntimeException('Listener factory may not return a Closure when a method is specified');
+                    }
+                }
+
+                if (!($listener instanceof \Closure)) {
+                    $listener = [$listener, $method ?? $defaultMethod];
                 }
 
                 call_user_func_array($listener, $args);
