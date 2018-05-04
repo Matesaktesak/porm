@@ -41,9 +41,10 @@ class Collection implements \ArrayAccess, \Countable, \IteratorAggregate {
 
     public function remove(object $entry) : void {
         if (($key = array_search($entry, $this->entries, true)) !== false) {
-            $this->removed[] = $entry;
             array_splice($this->entries, $key, 1);
         }
+
+        $this->removed[] = $entry;
     }
 
     public function get(int $key) : object {
