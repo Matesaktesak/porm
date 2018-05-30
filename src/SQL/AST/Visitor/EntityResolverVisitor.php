@@ -88,7 +88,13 @@ class EntityResolverVisitor implements IEnterVisitor {
             return;
         }
 
-        $query->mapResource($target->getPropertiesInfo(), $expr->alias->value ?? null, $target->getEntityClass());
+        $query->mapResource(
+            $target->getPropertiesInfo(),
+            $expr->alias->value ?? null,
+            $target->getEntityClass(),
+            $expr instanceof Node\JoinExpression && $expr->type === Node\JoinExpression::JOIN_LEFT
+        );
+
         $node->name->value = $target->getTableName();
     }
 

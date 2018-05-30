@@ -15,9 +15,16 @@ abstract class Query extends Node {
     private $paramIndex = -1;
 
 
-    public function mapResource(array $fields, ?string $alias = null, ?string $entity = null) : void {
+    public function mapResource(array $fields, ?string $alias = null, ?string $entity = null, bool $forceNullable = false) : void {
         if ($alias && $this->hasMappedResource($alias)) {
             throw new InvalidQueryException("Duplicate alias '$alias'");
+        }
+
+        if ($forceNullable) {
+            $fields = array_map(function(array $info) {
+                $info['nullable'] = true;
+                return $info;
+            }, $fields);
         }
 
         if ($alias) {
