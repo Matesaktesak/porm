@@ -466,7 +466,7 @@ class EntityManager {
             $where = [
                 $identifier . ' in' => $ids,
             ];
-        } else if (!empty($info['collection'])) {
+        } else {
             if ($target->hasRelationTarget($meta->getEntityClass(), $relation)) {
                 $targetProp = $target->getRelationTarget($meta->getEntityClass(), $relation);
                 $inverse = $target->getRelationInfo($targetProp);
@@ -476,7 +476,7 @@ class EntityManager {
 
             $identifier = $meta->getSingleIdentifierProperty();
             $attachBy = $identifier;
-            $collection = true;
+            $collection = !empty($info['collection']);
 
             $ids = Helpers::extractPropertyFromEntities($meta, $entities, $identifier, true);
 
@@ -510,8 +510,6 @@ class EntityManager {
             if (!empty($info['orderBy'])) {
                 $builder->orderBy($info['orderBy']);
             }
-        } else {
-            return [];
         }
 
         if (!empty($info['where'])) {
