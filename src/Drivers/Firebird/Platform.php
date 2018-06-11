@@ -106,8 +106,17 @@ class Platform implements IPlatform {
         }
 
         if ($query->dataSource instanceof AST\ValuesExpression) {
-            $sql[] = 'VALUES';
-            $sql[] = implode(', ', array_map(\Closure::fromCallable([$this, 'formatASTExpressionList']), $query->dataSource->dataSets));
+            if (count($query->dataSource->dataSets) === 1) {
+                $sql[] = 'VALUES';
+                $sql[] = '(' . $this->formatASTExpressionList($query->dataSource->dataSets[0]) . ')';
+            } else {
+                $sql[] = 'SELECT';
+                $sql[] = implode(
+                    ' FROM "RDB$DATABASE" UNION ALL ',
+                    array_map(\Closure::fromCallable([$this, 'formatASTExpressionList']), $query->dataSource->dataSets)
+                );
+                $sql[] = 'FROM "RDB$DATABASE"';
+            }
         } else if ($query->dataSource instanceof AST\SelectQuery) {
             $sql[] = $this->formatSelectQuery($query->dataSource);
         }
@@ -333,7 +342,7 @@ class Platform implements IPlatform {
 
             case AST\ExpressionList::class: /** @var AST\ExpressionList $expression */
                 $this->opStack[] = null;
-                $expression = $this->formatASTExpressionList($expression);
+                $expression = '(' . $this->formatASTExpressionList($expression) . ')';
                 break;
 
             case AST\SubqueryExpression::class: /** @var AST\SubqueryExpression $expression */
@@ -428,6 +437,8 @@ class Platform implements IPlatform {
                 }
 
                 return $expr;
+            } catch (\ArgumentCountError $e) {
+                throw new InvalidQueryException("Invalid call to {$call->name}(), too few arguments");
             } catch (\TypeError $e) {
                 $ns = preg_quote(substr(AST\Node::class, 0, -4));
                 $pattern = '~argument (\d+) passed to .+? must be (?:of the type|an instance of) (?:' . $ns . ')?(\S+), (?:instance of )?(?:' . $ns . ')?(\S+) given~i';
@@ -437,17 +448,15 @@ class Platform implements IPlatform {
                 } else {
                     throw new InvalidQueryException("Invalid argument passed when calling {$call->name}()");
                 }
-            } catch (\ArgumentCountError $e) {
-                throw new InvalidQueryException("Invalid call to {$call->name}(), too few arguments");
             }
         }
 
-        return $ucName . ($call->arguments ? $this->formatASTExpressionList($call->arguments) : '()');
+        return $ucName . '(' . ($call->arguments ? $this->formatASTExpressionList($call->arguments) : '') . ')';
     }
 
 
     private function formatASTExpressionList(AST\ExpressionList $list) : string {
-        return '(' . implode(', ', array_map(\Closure::fromCallable([$this, 'formatASTExpression']), $list->expressions)) . ')';
+        return implode(', ', array_map(\Closure::fromCallable([$this, 'formatASTExpression']), $list->expressions));
     }
 
     private function formatASTCaseExpression(AST\CaseExpression $expr) : string {

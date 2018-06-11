@@ -148,59 +148,25 @@ class EntityManager {
 
                 $this->attach($meta, $object);
 
+                $this->persistRelations($meta, $object, true);
+
                 $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postPersist', $object, $this);
 
-            } else if ($data) {
-                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::preUpdate', $object, $this, $changeset);
-
-                $ast = $this->astBuilder->buildUpdateQuery($meta->getEntityClass(), null, $meta->getPropertiesInfo(), $data, $id);
-                $query = $this->translator->compile($ast);
-                $this->execute($query);
-
-                $this->identityMap[$meta->getEntityClass()][$hash]['data'] = $data + $orig;
-
-                $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postUpdate', $object, $this, $changeset);
-            }
-
-            if ($prop = $meta->getSingleIdentifierProperty(false)) {
-                $localId = $meta->getReflection($prop)->getValue($object);
             } else {
-                return;
-            }
+                if ($data) {
+                    $this->eventDispatcher->dispatch($meta->getEntityClass() . '::preUpdate', $object, $this, $changeset);
 
-            foreach ($meta->getRelationsInfo() as $relation => $info) {
-                if (!empty($info['via'])) {
-                    /** @var Collection $coll */
-                    $coll = $meta->getReflection($relation)->getValue($object);
-                    $remote = $this->getEntityMetadata($info['target']);
-                    $remoteId = $remote->getReflection($remote->getSingleIdentifierProperty());
+                    $ast = $this->astBuilder->buildUpdateQuery($meta->getEntityClass(), null, $meta->getPropertiesInfo(), $data, $id);
+                    $query = $this->translator->compile($ast);
+                    $this->execute($query);
 
-                    if ($add = ($new ? $coll->toArray() : $coll->getAddedEntries())) {
-                        $add = array_map(function(object $entity) use ($info, $localId, $remoteId) : array {
-                            return [
-                                $info['via']['localColumn'] => $localId,
-                                $info['via']['remoteColumn'] => $remoteId->getValue($entity),
-                            ];
-                        }, $add);
+                    $this->identityMap[$meta->getEntityClass()][$hash]['data'] = $data + $orig;
+                }
 
-                        $ast = $this->astBuilder->buildInsertQuery($info['via']['table'], null, ... $add);
-                        $query = $this->translator->compile($ast);
-                        $this->execute($query);
-                    }
+                $related = $this->persistRelations($meta, $object, false);
 
-                    if ($remove = $coll->getRemovedEntries()) {
-                        $remove = array_map(function(object $entity) use ($remoteId) {
-                            return $remoteId->getValue($entity);
-                        }, $remove);
-
-                        $ast = $this->astBuilder->buildDeleteQuery($info['via']['table'], null, [
-                            $info['via']['localColumn'] => $localId,
-                            $info['via']['remoteColumn'] . ' in' => $remove,
-                        ]);
-
-                        $query = $this->translator->compile($ast);
-                        $this->execute($query);
-                    }
+                if ($data || $related) {
+                    $this->eventDispatcher->dispatch($meta->getEntityClass() . '::postUpdate', $object, $this, $changeset);
                 }
             }
 
@@ -443,6 +409,57 @@ class EntityManager {
         }
 
         return array_filter($entities);
+    }
+
+
+    private function persistRelations(Metadata\Entity $meta, object $object, bool $new) : bool {
+        if ($prop = $meta->getSingleIdentifierProperty(false)) {
+            $localId = $meta->getReflection($prop)->getValue($object);
+        } else {
+            return false;
+        }
+
+        $updated = false;
+
+        foreach ($meta->getRelationsInfo() as $relation => $info) {
+            if (!empty($info['via'])) {
+                /** @var Collection $coll */
+                $coll = $meta->getReflection($relation)->getValue($object);
+                $remote = $this->getEntityMetadata($info['target']);
+                $remoteId = $remote->getReflection($remote->getSingleIdentifierProperty());
+
+                if ($add = ($new ? $coll->toArray() : $coll->getAddedEntries())) {
+                    $add = array_map(function(object $entity) use ($info, $localId, $remoteId) : array {
+                        return [
+                            $info['via']['localColumn'] => $localId,
+                            $info['via']['remoteColumn'] => $remoteId->getValue($entity),
+                        ];
+                    }, $add);
+
+                    $ast = $this->astBuilder->buildInsertQuery($info['via']['table'], null, ... $add);
+                    $query = $this->translator->compile($ast);
+                    $this->execute($query);
+                    $updated = true;
+                }
+
+                if ($remove = $coll->getRemovedEntries()) {
+                    $remove = array_map(function(object $entity) use ($remoteId) {
+                        return $remoteId->getValue($entity);
+                    }, $remove);
+
+                    $ast = $this->astBuilder->buildDeleteQuery($info['via']['table'], null, [
+                        $info['via']['localColumn'] => $localId,
+                        $info['via']['remoteColumn'] . ' in' => $remove,
+                    ]);
+
+                    $query = $this->translator->compile($ast);
+                    $this->execute($query);
+                    $updated = true;
+                }
+            }
+        }
+
+        return $updated;
     }
 
 
