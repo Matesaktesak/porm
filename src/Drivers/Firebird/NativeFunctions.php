@@ -33,4 +33,16 @@ class NativeFunctions {
         return ['(' . implode(' || ', array_fill(0, count($expressions), '%s')) . ')', $expressions];
     }
 
+    public static function LIST_DISTINCT(AST\Expression $expression, ?AST\Expression $separator = null) : array {
+        $params = [$expression];
+        $placeholders = '%s';
+
+        if ($separator) {
+            $params[] = $separator;
+            $placeholders .= ', %s';
+        }
+
+        return ["LIST(DISTINCT $placeholders)", $params];
+    }
+
 }
