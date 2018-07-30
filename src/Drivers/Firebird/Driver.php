@@ -35,6 +35,9 @@ class Driver implements IDriver {
     /** @var resource */
     private $transaction;
 
+    /** @var int */
+    private $transactionDepth = 0;
+
 
     public function __construct(array $options) {
         $this->options = $options + static::DEFAULTS;
@@ -121,28 +124,46 @@ class Driver implements IDriver {
 
 
     public function inTransaction() : bool {
-        return $this->transaction !== null;
+        return $this->transactionDepth > 0;
     }
 
     public function beginTransaction() : void {
         $this->connect();
-        $this->transaction = ibase_trans($this->connection);
+
+        if ($this->inTransaction()) {
+            $this->query(sprintf('SAVEPOINT PORM_%d', $this->transactionDepth));
+        } else {
+            $this->transaction = ibase_trans($this->connection);
+        }
+
+        $this->transactionDepth++;
     }
 
     public function commit() : void {
-        if (!ibase_commit($this->transaction)) {
-            throw new DriverException("Unable to commit transaction");
-        }
+        if (!$this->inTransaction()) {
+            throw new DriverException("No active transaction to commit");
+        } else if (--$this->transactionDepth === 0) {
+            if (!ibase_commit($this->transaction)) {
+                throw new DriverException("Unable to commit transaction");
+            }
 
-        $this->transaction = null;
+            $this->transaction = null;
+        }
     }
 
     public function rollback() : void {
-        if (!ibase_rollback($this->transaction)) {
-            throw new DriverException("Unable to roll back transaction");
-        }
+        if (!$this->inTransaction()) {
+            throw new DriverException("No active transaction to roll back");
+        } else if ($this->transactionDepth > 1) {
+            $this->query(sprintf('ROLLBACK TO SAVEPOINT PORM_%d', --$this->transactionDepth));
+        } else {
+            if (!ibase_rollback($this->transaction)) {
+                throw new DriverException("Unable to roll back transaction");
+            }
 
-        $this->transaction = null;
+            $this->transaction = null;
+            $this->transactionDepth = 0;
+        }
     }
 
 
