@@ -9,6 +9,14 @@ use PORM\SQL\AST\Node as AST;
 
 class NativeFunctions {
 
+    public static function CAST(AST\Expression $expression, AST\Literal $as) : array {
+        return ['CAST(%s AS %s)', [$expression, $as->value]];
+    }
+
+    public static function CONCAT(AST\Expression ... $expressions) : array {
+        return ['(' . implode(' || ', array_fill(0, count($expressions), '%s')) . ')', $expressions];
+    }
+
     public static function CURRENT_DATE() : array {
         return ['CURRENT_DATE', null];
     }
@@ -21,16 +29,12 @@ class NativeFunctions {
         return ['CURRENT_TIMESTAMP', null];
     }
 
-    public static function EXTRACT(AST\Literal $unit, AST\Identifier $from) : array {
-        return ['EXTRACT(%s FROM %s)', [$unit->value, $from]];
-    }
-
     public static function DATEDIFF(AST\Literal $unit, AST\Expression $a, AST\Expression $b) : array {
         return ['DATEDIFF(%s, %s, %s)', [$unit->value, $a, $b]];
     }
 
-    public static function CONCAT(AST\Expression ... $expressions) : array {
-        return ['(' . implode(' || ', array_fill(0, count($expressions), '%s')) . ')', $expressions];
+    public static function EXTRACT(AST\Literal $unit, AST\Identifier $from) : array {
+        return ['EXTRACT(%s FROM %s)', [$unit->value, $from]];
     }
 
     public static function LIST_DISTINCT(AST\Expression $expression, ?AST\Expression $separator = null) : array {
