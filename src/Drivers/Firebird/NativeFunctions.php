@@ -9,8 +9,8 @@ use PORM\SQL\AST\Node as AST;
 
 class NativeFunctions {
 
-    public static function CAST(AST\Expression $expression, AST\Literal $as) : array {
-        return ['CAST(%s AS %s)', [$expression, $as->value]];
+    public static function CAST(AST\Expression $expression, AST\Expression $as) : array {
+        return ['CAST(%s AS %s)', [$expression, $as instanceof AST\Literal ? $as->value : $as]];
     }
 
     public static function CONCAT(AST\Expression ... $expressions) : array {
