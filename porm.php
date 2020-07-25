@@ -13,7 +13,7 @@ spl_autoload_register(function(string $class) {
 
 class porm {
 
-    private static $factory;
+    private static $container;
 
     private static $config = [];
 
@@ -21,7 +21,7 @@ class porm {
 
 
     public static function init(array $config, ?string $cacheDir = null) : void {
-        if (isset(self::$factory)) {
+        if (isset(self::$container)) {
             throw new RuntimeException("PORM has already been initialised");
         }
 
@@ -30,16 +30,16 @@ class porm {
     }
 
     public static function getManager(string $entity) {
-        return self::getFactory()->getManager($entity);
+        return self::getContainer()->getManager($entity);
     }
 
     public static function getEventDispatcher() : PORM\EventDispatcher {
-        return self::getFactory()->getEventDispatcher();
+        return self::getContainer()->getEventDispatcher();
     }
 
 
-    public static function getFactory() : PORM\Factory {
-        return self::$factory ?? self::$factory = new PORM\Factory(self::$config, self::$cacheDir);
+    public static function getContainer() : PORM\DI\Container {
+        return self::$container ?? self::$container = new PORM\DI\Container(self::$config, self::$cacheDir);
     }
 
 }

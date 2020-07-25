@@ -296,7 +296,7 @@ class EntityManager {
             $entity = $this->identityMap[$class][$hash]['object'];
             $new = false;
 
-            if ($resultId && $resultId === $this->identityMap[$class][$hash]) {
+            if ($resultId && $resultId === $this->identityMap[$class][$hash]['resultId']) {
                 return $entity;
             }
         } else {
@@ -340,6 +340,7 @@ class EntityManager {
             }
         } else {
             $this->identityMap[$class][$hash] = [
+                'resultId' => null,
                 'object' => $entity,
                 'data' => [],
             ];

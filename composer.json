@@ -17,5 +17,10 @@
         "psr-4": {
             "PORM\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\": "example/"
+        }
     }
 }
