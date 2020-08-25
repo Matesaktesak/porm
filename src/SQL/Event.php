@@ -57,7 +57,9 @@ class Event {
     }
 
     public function getDuration() : ?float {
-        return isset($this->startTime, $this->endTime) ? $this->endTime - $this->startTime : null;
+        $queryDuration = isset($this->startTime, $this->endTime) ? $this->endTime - $this->startTime : null;
+        $fetchDuration = $this->resultSet ? $this->resultSet->getFetchDuration() : null;
+        return isset($queryDuration) || isset($fetchDuration) ? ($queryDuration ?? 0) + ($fetchDuration ?? 0) : null;
     }
 
     public function getAffectedRows() : ?int {

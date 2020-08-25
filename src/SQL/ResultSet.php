@@ -18,6 +18,10 @@ class ResultSet implements \IteratorAggregate {
 
     private $fetchedRows = 0;
 
+    private $fetchStartTime = null;
+
+    private $fetchEndTime = null;
+
     /** @var string */
     private $resultId = null;
 
@@ -35,7 +39,16 @@ class ResultSet implements \IteratorAggregate {
 
     public function fetch() {
         $this->assertResourceNotFreed();
+
+        if (!isset($this->fetchStartTime)) {
+            $this->fetchStartTime = microtime(true);
+        }
+
         $row = $this->driver->fetchRow($this->resource);
+
+        if (!isset($this->fetchEndTime)) {
+            $this->fetchEndTime = microtime(true);
+        }
 
         if ($row !== null) {
             $this->fetchedRows++;
@@ -55,6 +68,12 @@ class ResultSet implements \IteratorAggregate {
 
     public function getFetchedRows() : int {
         return $this->fetchedRows;
+    }
+
+    public function getFetchDuration() : ?float {
+        return isset($this->fetchStartTime) && isset($this->fetchEndTime)
+            ? $this->fetchEndTime - $this->fetchStartTime
+            : null;
     }
 
 
