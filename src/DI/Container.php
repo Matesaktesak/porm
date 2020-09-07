@@ -14,6 +14,7 @@ use PORM\SQL;
 use PORM\Migrations;
 use PORM\Bridges;
 use PORM\Command;
+use Tracy\Debugger;
 
 
 class Container {
@@ -66,8 +67,11 @@ class Container {
     /** @var SQL\AST\Builder */
     private $astBuilder;
 
-    /** @var Bridges\Tracy\Panel */
-    private $tracyPanel;
+    /** @var Bridges\Tracy\BarPanel */
+    private $tracyBarPanel;
+
+    /** @var Bridges\Tracy\DebuggerPanel */
+    private $tracyDebuggerPanel;
 
 
 
@@ -177,13 +181,22 @@ class Container {
     }
 
 
-    public function getTracyPanel() : Bridges\Tracy\Panel {
-        if (!$this->tracyPanel) {
-            $this->tracyPanel = $this->factory->createTracyPanel();
-            $this->tracyPanel->register();
+    public function getTracyBarPanel() : Bridges\Tracy\BarPanel {
+        if (!$this->tracyBarPanel) {
+            $this->tracyBarPanel = $this->factory->createTracyBarPanel();
+            Debugger::getBar()->addPanel($this->tracyBarPanel);
         }
 
-        return $this->tracyPanel;
+        return $this->tracyBarPanel;
+    }
+
+    public function getTracyDebuggerPanel() : Bridges\Tracy\DebuggerPanel {
+        if (!$this->tracyDebuggerPanel) {
+            $this->tracyDebuggerPanel = $this->factory->createTracyDebuggerPanel();
+            Debugger::getBlueScreen()->addPanel($this->tracyDebuggerPanel);
+        }
+
+        return $this->tracyDebuggerPanel;
     }
 
     public function getASTParser() : SQL\AST\Parser {

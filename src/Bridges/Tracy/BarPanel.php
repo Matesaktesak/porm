@@ -6,11 +6,10 @@ namespace PORM\Bridges\Tracy;
 
 use Composer\Autoload\ClassLoader;
 use PORM\SQL\Event;
-use PORM\Exceptions\QueryException;
 use Tracy;
 
 
-class Panel implements Tracy\IBarPanel {
+class BarPanel implements Tracy\IBarPanel {
 
     /** @var Event[] */
     private $events = [];
@@ -22,29 +21,6 @@ class Panel implements Tracy\IBarPanel {
     /** @var int */
     private $pormPathLen = null;
 
-
-
-    public static function renderException($e) : ?array {
-        if ($e instanceof QueryException && $e->hasQuery()) {
-            if ($e->hasParameters()) {
-                $p = '<h3>Parameters:</h3>' . Tracy\Dumper::toHtml($e->getParameters());
-            } else {
-                $p = '';
-            }
-
-            return [
-                'tab' => 'SQL',
-                'panel' => '<pre class="code"><div>' . htmlspecialchars(self::formatSql($e->getQuery())) . '</div></pre>' . $p,
-            ];
-        } else {
-            return null;
-        }
-    }
-
-    public function register() {
-        Tracy\Debugger::getBar()->addPanel($this);
-        Tracy\Debugger::getBlueScreen()->addPanel([__CLASS__, 'renderException']);
-    }
 
     public function logEvent(Event $event) : void {
         $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
@@ -68,7 +44,7 @@ class Panel implements Tracy\IBarPanel {
                 return $total + $event->getDuration();
             }, 0);
 
-            return 'ORM (' . self::formatTime($total) . ')';
+            return 'ORM (' . Helpers::formatTime($total) . ')';
         }
     }
 
@@ -97,9 +73,9 @@ class Panel implements Tracy\IBarPanel {
 
         foreach ($this->events as $event) {
             $src[] = '<tr>';
-            $src[] = '<td class="tracy-OrmPanel-nowrap">' . self::formatTime($event->getDuration()) . '</td>';
+            $src[] = '<td class="tracy-OrmPanel-nowrap">' . Helpers::formatTime($event->getDuration()) . '</td>';
             $src[] = '<td>';
-            $src[] = '<pre class="tracy-OrmPanel-sql">' . htmlspecialchars(self::formatSql($event->getQuery())) . '</pre>';
+            $src[] = '<pre class="tracy-OrmPanel-sql">' . htmlspecialchars(Helpers::formatSql($event->getQuery())) . '</pre>';
 
             if ($event->hasParameters()) {
                 $src[] = '<h3>Parameters:</h3>';
@@ -134,9 +110,6 @@ class Panel implements Tracy\IBarPanel {
         return implode('', $src);
     }
 
-
-
-
     private function isVendor(string $path) : bool {
         if (class_exists(ClassLoader::class)) {
             return strpos($path, '/vendor/') !== false;
@@ -152,24 +125,6 @@ class Panel implements Tracy\IBarPanel {
         }
 
         return mb_substr($path, 0, $this->pormPathLen) === $this->pormPath;
-    }
-
-
-
-    private static function formatTime(?float $duration = null) : string {
-        if ($duration !== null) {
-            return sprintf('%.3f ms', $duration * 1000);
-        } else {
-            return '';
-        }
-    }
-
-    private static function formatSql(string $query) : string {
-        return preg_replace_callback(
-            '/(?<=[\h(+-])((?<!^)SELECT|(EXTRACT\h*\(\h*\S+\h+)?FROM|(?:(?:LEFT|RIGHT|INNER|OUTER)\h+)*JOIN|WHERE|SET|GROUP\h+BY|ORDER\h+BY|INTO|VALUES|SET|UNION)(?=\h)/i',
-            function(array $m) : string { return !isset($m[2]) ? "\n" . $m[1] : $m[1]; },
-            $query
-        );
     }
 
 }

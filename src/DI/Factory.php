@@ -199,8 +199,12 @@ class Factory {
         return new Command\RunMigrationsCommand($resolver, $runner);
     }
 
-    public function createTracyPanel() : Bridges\Tracy\Panel {
-        return new Bridges\Tracy\Panel();
+    public function createTracyBarPanel() : Bridges\Tracy\BarPanel {
+        return new Bridges\Tracy\BarPanel();
+    }
+
+    public function createTracyDebuggerPanel() : Bridges\Tracy\DebuggerPanel {
+        return new Bridges\Tracy\DebuggerPanel();
     }
 
     public function createCacheStorage(string $namespace) : ?Cache\IStorage {

@@ -13,6 +13,7 @@ use PORM\Metadata;
 use PORM\SQL;
 use Nette\DI\CompilerExtension;
 use Symfony\Component\Console\Application;
+use Tracy\Debugger;
 
 
 class PORMExtension extends CompilerExtension {
@@ -96,13 +97,17 @@ class PORMExtension extends CompilerExtension {
         $builder->addDefinition($this->prefix('migrations.runner'))
             ->setFactory($this->prefix('@factory::createMigrationRunner'));
 
+        if (class_exists(Debugger::class)) {
+            $builder->addDefinition($this->prefix('tracy.panel.debugger'))
+                ->setFactory($this->prefix('@factory::createTracyDebuggerPanel'));
 
-        if ($config['debugger']) {
-            $builder->addDefinition($this->prefix('debugger'))
-                ->setFactory($this->prefix('@factory::createTracyPanel'));
+            if ($config['debugger']) {
+                $builder->addDefinition($this->prefix('tracy.panel.bar'))
+                    ->setFactory($this->prefix('@factory::createTracyBarPanel'));
 
-            $builder->getDefinition($this->prefix('connection'))
-                ->addSetup('addListener', [[$this->prefix('@debugger'), 'logEvent']]);
+                $builder->getDefinition($this->prefix('connection'))
+                    ->addSetup('addListener', [[$this->prefix('@tracy.panel.bar'), 'logEvent']]);
+            }
         }
     }
 
@@ -126,9 +131,15 @@ class PORMExtension extends CompilerExtension {
         $builder = $this->getContainerBuilder();
         $init = $class->getMethod('initialize');
 
-        if ($builder->hasDefinition($this->prefix('debugger'))) {
-            $init->addBody($builder->formatPhp('?;', [
-                new Statement($this->prefix('@debugger::register')),
+        if ($builder->hasDefinition($this->prefix('tracy.panel.debugger'))) {
+            $init->addBody($builder->formatPhp('Tracy\Debugger::getBlueScreen()->addPanel(?);', [
+                new Statement($this->prefix('@tracy.panel.debugger')),
+            ]));
+        }
+
+        if ($builder->hasDefinition($this->prefix('tracy.panel.bar'))) {
+            $init->addBody($builder->formatPhp('Tracy\Debugger::getBar()->addPanel(?);', [
+                new Statement($this->prefix('@tracy.panel.bar')),
             ]));
         }
     }
