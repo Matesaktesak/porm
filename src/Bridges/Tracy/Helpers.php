@@ -10,7 +10,7 @@ class Helpers {
     final private function __construct() {}
 
     public static function formatSql(string $query) : string {
-        return preg_replace_callback(
+        return strpos($query, "\n") !== false ? $query : preg_replace_callback(
             '/(?<=[\h(+-])((?<!^)SELECT|(EXTRACT\h*\(\h*\S+\h+)?FROM|(?:(?:LEFT|RIGHT|INNER|OUTER)\h+)*JOIN|WHERE|SET|GROUP\h+BY|ORDER\h+BY|INTO|VALUES|UNION)(?=\h)/i',
             function(array $m) : string { return !isset($m[2]) ? "\n" . $m[1] : $m[1]; },
             $query
