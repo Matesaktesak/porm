@@ -132,15 +132,15 @@ class PORMExtension extends CompilerExtension {
         $init = $class->getMethod('initialize');
 
         if ($builder->hasDefinition($this->prefix('tracy.panel.debugger'))) {
-            $init->addBody($builder->formatPhp('Tracy\Debugger::getBlueScreen()->addPanel(?);', [
-                new Statement($this->prefix('@tracy.panel.debugger')),
-            ]));
+            $init->addBody('Tracy\Debugger::getBlueScreen()->addPanel($this->getService(?));', [
+                $this->prefix('tracy.panel.debugger'),
+            ]);
         }
 
         if ($builder->hasDefinition($this->prefix('tracy.panel.bar'))) {
-            $init->addBody($builder->formatPhp('Tracy\Debugger::getBar()->addPanel(?);', [
-                new Statement($this->prefix('@tracy.panel.bar')),
-            ]));
+            $init->addBody('Tracy\Debugger::getBar()->addPanel($this->getService(?));', [
+                $this->prefix('tracy.panel.bar'),
+            ]);
         }
     }
 
