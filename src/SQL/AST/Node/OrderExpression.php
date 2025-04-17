@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class OrderExpression extends Node {
 
     /** @var Expression */
-    public $value;
+    public Expression $value;
 
     /** @var bool */
-    public $ascending;
+    public bool $ascending;
 
 
     public function __construct(Expression $value, bool $ascending = true) {

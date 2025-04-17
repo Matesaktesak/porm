@@ -7,9 +7,9 @@ namespace PORM\Exceptions;
 
 class QueryException extends DriverException {
 
-    private $query;
+    private ?string $query;
 
-    private $parameters;
+    private ?array $parameters;
 
 
     public function __construct(string $message = "", int $code = 0, ?string $query = null, ?array $parameters = null, \Throwable $previous = null) {

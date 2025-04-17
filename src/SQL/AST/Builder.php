@@ -11,14 +11,9 @@ use PORM\Exceptions\InvalidQueryException;
 
 
 class Builder {
-
-    private $metadataProvider;
-
-    private $platform;
-
-    private $parser;
-
-
+    private Provider $metadataProvider;
+    private Parser $parser;
+    private IPlatform $platform;
 
     public function __construct(Provider $metadataProvider, Parser $parser, IPlatform $platform) {
         $this->metadataProvider = $metadataProvider;
@@ -27,7 +22,7 @@ class Builder {
     }
 
 
-    public function buildSelectQuery(?string $from = null, ?string $alias = null, ?array $fields = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\SelectQuery {
+    public function buildSelectQuery(?string $from = null, ?string $alias = null, ?array $fields = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): Node\SelectQuery {
         $query = new Node\SelectQuery();
 
         if ($from) {
@@ -42,7 +37,7 @@ class Builder {
         return $query;
     }
 
-    public function buildInsertQuery(string $into, ?array $info, array ... $rows) : Node\InsertQuery {
+    public function buildInsertQuery(string $into, ?array $info, array ...$rows): Node\InsertQuery {
         $query = new Node\InsertQuery();
         $query->into = new Node\TableReference($into);
         $query->fields = $rows ? $this->buildFieldList(array_keys(reset($rows))) : [];
@@ -50,7 +45,7 @@ class Builder {
         return $query;
     }
 
-    public function buildUpdateQuery(string $table, ?string $alias = null, array $info, array $data, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\UpdateQuery {
+    public function buildUpdateQuery(string $table, ?string $alias, array $info, array $data, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): Node\UpdateQuery {
         $query = new Node\UpdateQuery();
         $query->table = new Node\TableExpression(new Node\TableReference($table), $alias);
         $query->data = $this->buildAssignmentExpressionList($info, $data, $alias);
@@ -58,14 +53,14 @@ class Builder {
         return $query;
     }
 
-    public function buildDeleteQuery(string $from, ?string $alias = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : Node\DeleteQuery {
+    public function buildDeleteQuery(string $from, ?string $alias = null, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): Node\DeleteQuery {
         $query = new Node\DeleteQuery();
         $query->from = new Node\TableExpression(new Node\TableReference($from), $alias);
         $this->applyCommonClauses($query, $where, $orderBy, $offset, $limit);
         return $query;
     }
 
-    public function buildConditionalExpression(?array $conditions) : ?Node\Expression {
+    public function buildConditionalExpression(?array $conditions): ?Node\Expression {
         if (!$conditions) {
             return null;
         }
@@ -119,11 +114,12 @@ class Builder {
     }
 
 
-    public function buildResultFields(array $fields, ?string $alias = null) : array {
+    public function buildResultFields(array $fields, ?string $alias = null): array {
         $resultFields = [];
         $alias = $alias ? $alias . '.' : '';
 
-        foreach ($fields as $as => $value) { /** @var Expression|Node\Expression|string $value */
+        foreach ($fields as $as => $value) {
+            /** @var Expression|Node\Expression|string $value */
             if ($value instanceof Expression) {
                 $value = $this->extractExpression($value);
             } else if (!($value instanceof Node\Expression)) {
@@ -137,7 +133,7 @@ class Builder {
     }
 
 
-    public function applyCommonClauses(Node\Query $query, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null) : void {
+    public function applyCommonClauses(Node\Query $query, ?array $where = null, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): void {
         /** @var Node\SelectQuery|Node\UpdateQuery|Node\DeleteQuery $query */
         $query->where = $this->buildConditionalExpression($where);
         $query->orderBy = $this->buildOrderExpressionList($orderBy);
@@ -146,8 +142,7 @@ class Builder {
     }
 
 
-
-    private function buildAssignmentExpressionList(array $info, ?array $data, ?string $alias = null) : array {
+    private function buildAssignmentExpressionList(array $info, ?array $data, ?string $alias = null): array {
         if (!$data) {
             return [];
         }
@@ -168,13 +163,13 @@ class Builder {
     }
 
 
-    private function buildFieldList(array $fields) : array {
-        return array_map(function(string $field) : Node\Identifier {
+    private function buildFieldList(array $fields): array {
+        return array_map(function (string $field): Node\Identifier {
             return new Node\Identifier($field);
         }, $fields);
     }
 
-    private function buildValuesExpression(?array $info, array ... $rows) : Node\ValuesExpression {
+    private function buildValuesExpression(?array $info, array ...$rows): Node\ValuesExpression {
         $expr = new Node\ValuesExpression();
 
         foreach ($rows as $row) {
@@ -190,7 +185,7 @@ class Builder {
     }
 
 
-    private function buildOrderExpressionList(?array $orderBy) : array {
+    private function buildOrderExpressionList(?array $orderBy): array {
         if (!$orderBy) {
             return [];
         }
@@ -217,7 +212,7 @@ class Builder {
             } else {
                 $expressions[] = new Node\OrderExpression(
                     new Node\Identifier($prop),
-                    is_bool($value) ? $value : (strtolower((string) $value) === 'asc')
+                    is_bool($value) ? $value : (strtolower((string)$value) === 'asc')
                 );
             }
         }
@@ -226,7 +221,7 @@ class Builder {
     }
 
 
-    private function extractExpression(Expression $expression) : Node\Expression {
+    private function extractExpression(Expression $expression): Node\Expression {
         $node = $this->parser->parseExpression($expression->getSql());
 
         if ($expression->hasParameters()) {
@@ -236,7 +231,7 @@ class Builder {
         return $node;
     }
 
-    private function sanitizeValueList($value) : array {
+    private function sanitizeValueList($value): array {
         if (!is_array($value)) {
             if (is_iterable($value)) {
                 $value = iterator_to_array($value);
@@ -246,14 +241,14 @@ class Builder {
         }
 
         return empty($value)
-            ? [ Node\Literal::null() ]
-            : array_map(function($v) {
+            ? [Node\Literal::null()]
+            : array_map(function ($v) {
                 return $this->sanitizeValue($v);
             }, $value);
     }
 
 
-    private function sanitizeValue($value, ?string $type = null, ?bool $nullable = null) : Node\Expression {
+    private function sanitizeValue($value, ?string $type = null, ?bool $nullable = null): Node\Expression {
         if ($value instanceof Expression) {
             return $this->extractExpression($value);
         } else {

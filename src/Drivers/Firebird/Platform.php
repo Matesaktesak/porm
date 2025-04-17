@@ -20,11 +20,11 @@ class Platform implements IPlatform {
 
     private const MIGRATION_TABLE = 'PORM_MIGRATIONS';
 
-    private $opStack = [];
+    private array $opStack = [];
 
-    private $queryStack = [];
+    private array $queryStack = [];
 
-    private $paramMapStack = [];
+    private array $paramMapStack = [];
 
 
     public function supportsReturningClause() : bool {
@@ -504,8 +504,7 @@ class Platform implements IPlatform {
             case AST\SubqueryExpression::class: /** @var AST\SubqueryExpression $table */
                 $query = $this->formatSelectQuery($table->query);
                 $this->mergeParameterMap($query->getParameterMap());
-                $expression = '(' . $query->getSql() . ')';
-                return $expression;
+                return '(' . $query->getSql() . ')';
 
             default:
                 throw new DriverException('Unknown AST node ' . get_class($table));

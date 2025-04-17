@@ -9,9 +9,9 @@ use PORM\Mapper;
 
 class ArrayHydrator {
 
-    private $mapper;
+    private Mapper $mapper;
 
-    private $resultMap;
+    private array $resultMap;
 
 
 

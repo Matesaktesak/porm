@@ -10,19 +10,19 @@ class SelectQuery extends Query implements IDataSource {
     use CommonClausesTrait;
 
     /** @var ResultField[] */
-    public $fields = [];
+    public array $fields = [];
 
     /** @var TableExpression[] */
-    public $from = [];
+    public array $from = [];
 
     /** @var Identifier[] */
-    public $groupBy = [];
+    public array $groupBy = [];
 
     /** @var Expression|null */
-    public $having = null;
+    public ?Expression $having = null;
 
     /** @var UnionClause[] */
-    public $union = [];
+    public array $union = [];
 
 
 

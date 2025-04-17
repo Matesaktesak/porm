@@ -9,13 +9,13 @@ class InsertQuery extends Query {
     use ReturningClauseTrait;
 
     /** @var TableReference */
-    public $into;
+    public TableReference $into;
 
     /** @var Identifier[] */
-    public $fields = [];
+    public array $fields = [];
 
     /** @var IDataSource */
-    public $dataSource;
+    public IDataSource $dataSource;
 
 
 

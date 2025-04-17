@@ -16,7 +16,7 @@ class CallbackVisitor implements IEnterVisitor, ILeaveVisitor {
 
     private $leave;
 
-    private $nodeTypes;
+    private array $nodeTypes;
 
 
     public static function forEnter(callable $handler, string ... $nodeTypes) : self {

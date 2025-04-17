@@ -8,7 +8,7 @@ namespace PORM\SQL\AST\Node;
 class NamedParameterReference extends ParameterReference {
 
     /** @var string */
-    public $name;
+    public string $name;
 
 
     public function __construct(string $name, ?string $type = null, ?bool $nullable = null) {

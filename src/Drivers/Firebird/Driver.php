@@ -27,7 +27,7 @@ class Driver implements IDriver {
 
 
     /** @var array */
-    private $options;
+    private array $options;
 
     /** @var resource */
     private $connection;
@@ -36,7 +36,7 @@ class Driver implements IDriver {
     private $transaction;
 
     /** @var int */
-    private $transactionDepth = 0;
+    private int $transactionDepth = 0;
 
 
     public function __construct(array $options) {

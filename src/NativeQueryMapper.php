@@ -6,13 +6,13 @@ namespace PORM;
 
 
 class NativeQueryMapper {
-    private $query;
+    private string $query;
 
-    private $parameterMap = [];
+    private array $parameterMap = [];
 
-    private $resultFields = [];
+    private array $resultFields = [];
 
-    public function __construct($query) {
+    public function __construct(string $query) {
         $this->query = $query;
     }
 

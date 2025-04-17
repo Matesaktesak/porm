@@ -40,7 +40,7 @@ class Dumper {
 
         $walker = new Walker();
         $walker->apply($node, CallbackVisitor::forEnter(
-            \Closure::fromCallable([static::class, 'dumpNode']),
+            \PORM\SQL\AST\Dumper::dumpNode(...),
             Node\ArithmeticExpression::class,
             Node\AssignmentExpression::class,
             Node\BinaryExpression::class,

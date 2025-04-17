@@ -8,13 +8,13 @@ namespace PORM\SQL\AST\Node;
 trait BinaryExpressionTrait {
 
     /** @var Expression */
-    public $left;
+    public Expression $left;
 
     /** @var string */
-    public $operator;
+    public string $operator;
 
     /** @var Expression */
-    public $right;
+    public Expression $right;
 
     public function __construct(Expression $left, string $operator, Expression $right) {
         $this->left = $left;

@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class TableExpression extends Node {
 
     /** @var ITable */
-    public $table;
+    public ITable $table;
 
     /** @var Identifier|null */
-    public $alias = null;
+    public ?Identifier $alias = null;
 
 
     public function __construct(ITable $table, ?string $alias = null) {

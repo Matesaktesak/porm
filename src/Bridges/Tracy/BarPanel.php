@@ -12,14 +12,14 @@ use Tracy;
 class BarPanel implements Tracy\IBarPanel {
 
     /** @var Event[] */
-    private $events = [];
+    private array $events = [];
 
 
     /** @var string */
-    private $pormPath = null;
+    private ?string $pormPath = null;
 
     /** @var int */
-    private $pormPathLen = null;
+    private ?int $pormPathLen = null;
 
 
     public function logEvent(Event $event) : void {

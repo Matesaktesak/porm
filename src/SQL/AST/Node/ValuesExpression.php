@@ -8,7 +8,7 @@ namespace PORM\SQL\AST\Node;
 class ValuesExpression extends Node implements IDataSource {
 
     /** @var ExpressionList[] */
-    public $dataSets = [];
+    public array $dataSets = [];
 
 
     public function getTraversableProperties() : array {

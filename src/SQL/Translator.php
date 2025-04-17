@@ -14,26 +14,26 @@ use PORM\SQL\AST\IVisitor;
 
 class Translator {
 
-    private $parser;
+    private AST\Parser $parser;
 
-    private $walker;
+    private AST\Walker $walker;
 
-    private $metadataProvider;
+    private Provider $metadataProvider;
 
-    private $platform;
+    private IPlatform $platform;
 
-    private $eventDispatcher;
+    private EventDispatcher $eventDispatcher;
 
-    private $cache;
+    private ?Cache\IStorage $cache;
 
     /** @var IVisitor[] */
-    private $visitors = null;
+    private ?array $visitors = null;
 
 
     public function __construct(
-        AST\Parser $parser,
-        Provider $metadataProvider,
-        IPlatform $platform,
+        AST\Parser      $parser,
+        Provider        $metadataProvider,
+        IPlatform       $platform,
         EventDispatcher $eventDispatcher,
         ?Cache\IStorage $cache = null
     ) {
@@ -46,11 +46,11 @@ class Translator {
     }
 
 
-    public function translate(string $query) : Query {
+    public function translate(string $query): Query {
         if ($this->cache) {
             return $this->cache->get(
                 $this->getQueryCacheKey($query),
-                function() use ($query) {
+                function () use ($query) {
                     return $this->doTranslate($query);
                 }
             );
@@ -59,40 +59,33 @@ class Translator {
         }
     }
 
-    public function compile(AST\Node\Query $ast) : Query {
+    public function compile(AST\Node\Query $ast): Query {
         $this->eventDispatcher->dispatch(self::class . '::beforeCompile', $ast);
 
-        foreach ($this->getASTVisitors() as $visitors) {
-            $this->walker->apply($ast, ... $visitors);
-        }
+        $this->walker->apply($ast, ...$this->getASTVisitors());
 
         $this->eventDispatcher->dispatch(self::class . '::compile', $ast);
 
-        switch (get_class($ast)) {
-            case AST\Node\SelectQuery::class: /** @var AST\Node\SelectQuery $ast */
-                return $this->platform->formatSelectQuery($ast);
-            case AST\Node\InsertQuery::class: /** @var AST\Node\InsertQuery $ast */
-                return $this->platform->formatInsertQuery($ast);
-            case AST\Node\UpdateQuery::class: /** @var AST\Node\UpdateQuery $ast */
-                return $this->platform->formatUpdateQuery($ast);
-            case AST\Node\DeleteQuery::class: /** @var AST\Node\DeleteQuery $ast */
-                return $this->platform->formatDeleteQuery($ast);
-            default:
-                throw new InvalidQueryException(":-(");
-        }
+        return match (get_class($ast)) {
+            AST\Node\SelectQuery::class => $this->platform->formatSelectQuery($ast),
+            AST\Node\InsertQuery::class => $this->platform->formatInsertQuery($ast),
+            AST\Node\UpdateQuery::class => $this->platform->formatUpdateQuery($ast),
+            AST\Node\DeleteQuery::class => $this->platform->formatDeleteQuery($ast),
+            default => throw new InvalidQueryException(":-("),
+        };
     }
 
 
-    private function doTranslate(string $query) : Query {
+    private function doTranslate(string $query): Query {
         $ast = $this->parser->parseQuery($query);
         return $this->compile($ast);
     }
 
-    private function getQueryCacheKey(string $query) : string {
+    private function getQueryCacheKey(string $query): string {
         return sha1($query) . strlen($query);
     }
 
-    private function getASTVisitors() : array {
+    private function getASTVisitors(): array {
         if ($this->visitors === null) {
             $this->visitors[] = [
                 new AST\Visitor\EntityResolverVisitor($this->metadataProvider),
@@ -112,7 +105,7 @@ class Translator {
     }
 
 
-    public static function serialize(Query $query) : string {
+    public static function serialize(Query $query): string {
         return Cache\Helpers::serializeInstance($query, [
             'sql' => 'Compiled SQL',
             'parameterMap' => 'Parameter map',

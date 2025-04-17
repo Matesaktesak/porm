@@ -7,18 +7,18 @@ namespace PORM\SQL;
 
 class Event {
 
-    private $query;
+    private string $query;
 
-    private $parameters;
+    private ?array $parameters;
 
     private $startTime;
 
     private $endTime;
 
     /** @var ResultSet */
-    private $resultSet;
+    private ResultSet $resultSet;
 
-    private $affectedRows;
+    private ?int $affectedRows;
 
 
     public function __construct(string $query, ?array $parameters = null) {
@@ -58,7 +58,7 @@ class Event {
 
     public function getDuration() : ?float {
         $queryDuration = isset($this->startTime, $this->endTime) ? $this->endTime - $this->startTime : null;
-        $fetchDuration = $this->resultSet ? $this->resultSet->getFetchDuration() : null;
+        $fetchDuration = $this->resultSet?->getFetchDuration();
         return isset($queryDuration) || isset($fetchDuration) ? ($queryDuration ?? 0) + ($fetchDuration ?? 0) : null;
     }
 
@@ -67,6 +67,6 @@ class Event {
     }
 
     public function getFetchedRows() : ?int {
-        return $this->resultSet ? $this->resultSet->getFetchedRows() : null;
+        return $this->resultSet?->getFetchedRows();
     }
 }

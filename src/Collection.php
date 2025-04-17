@@ -7,11 +7,11 @@ namespace PORM;
 
 class Collection implements \ArrayAccess, \Countable, \IteratorAggregate {
 
-    private $entries;
+    private array $entries;
 
-    private $added = [];
+    private array $added = [];
 
-    private $removed = [];
+    private array $removed = [];
 
 
     public function __construct(array $entries = []) {

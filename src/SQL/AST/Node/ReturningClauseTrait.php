@@ -8,6 +8,6 @@ namespace PORM\SQL\AST\Node;
 trait ReturningClauseTrait {
 
     /** @var ResultField[] */
-    public $returning = [];
+    public array $returning = [];
 
 }

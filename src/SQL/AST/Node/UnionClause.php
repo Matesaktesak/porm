@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class UnionClause extends Node {
 
     /** @var SelectQuery */
-    public $query;
+    public SelectQuery $query;
 
     /** @var bool */
-    public $all;
+    public bool $all;
 
 
     public function __construct(SelectQuery $query, bool $all = false) {

@@ -11,10 +11,10 @@ class UpdateQuery extends Query {
     use ReturningClauseTrait;
 
     /** @var TableExpression */
-    public $table;
+    public TableExpression $table;
 
     /** @var AssignmentExpression[] */
-    public $data = [];
+    public array $data = [];
 
 
 

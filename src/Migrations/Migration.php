@@ -14,9 +14,9 @@ class Migration {
     const PHP = 'php',
         SQL = 'sql';
 
-    private $version;
+    private int $version;
 
-    private $type;
+    private string $type;
 
 
     public function __construct(int $version, string $type) {

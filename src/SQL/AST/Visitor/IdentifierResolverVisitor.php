@@ -13,7 +13,7 @@ use PORM\SQL\AST\Node;
 
 class IdentifierResolverVisitor implements IEnterVisitor {
 
-    private $metadataProvider;
+    private Provider $metadataProvider;
 
 
     public function __construct(Provider $metadataProvider) {
@@ -27,6 +27,9 @@ class IdentifierResolverVisitor implements IEnterVisitor {
         ];
     }
 
+    /**
+     * @throws InvalidQueryException
+     */
     public function enter(Node\Node $node, Context $context) : void {
         /** @var Node\Identifier $node */
 
@@ -34,8 +37,7 @@ class IdentifierResolverVisitor implements IEnterVisitor {
             return;
         }
 
-        if (strpos($node->value, '.') !== false) {
-            /** @var string $alias */
+        if (str_contains($node->value, '.')) {
             @list($alias, $property, $sub) = explode('.', $node->value);
         } else {
             $property = $node->value;
@@ -65,9 +67,7 @@ class IdentifierResolverVisitor implements IEnterVisitor {
                     } else {
                         throw new InvalidQueryException("Property '{$alias}.{$property}' has no subfields");
                     }
-                } else if ($meta && $meta->hasRelation($property)) {
-
-                } else {
+                } else if (!$meta || !$meta->hasRelation($property)) {
                     throw new InvalidQueryException("Unknown field: '{$node->value}'");
                 }
             }

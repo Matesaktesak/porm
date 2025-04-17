@@ -11,7 +11,7 @@ class DeleteQuery extends Query {
     use ReturningClauseTrait;
 
     /** @var TableExpression */
-    public $from;
+    public TableExpression $from;
 
 
     public function getTraversableProperties() : array {

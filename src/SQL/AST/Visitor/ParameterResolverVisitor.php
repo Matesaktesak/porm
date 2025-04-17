@@ -12,7 +12,7 @@ use PORM\SQL\AST\Node;
 
 class ParameterResolverVisitor implements IEnterVisitor {
 
-    private $parameterContainerPredicate;
+    private \Closure $parameterContainerPredicate;
 
 
 

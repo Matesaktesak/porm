@@ -9,19 +9,19 @@ use PORM\Cache;
 
 class Provider {
 
-    private $compiler;
+    private Compiler $compiler;
 
-    private $cacheStorage;
+    private ?Cache\IStorage $cacheStorage;
 
-    private $namespaces;
+    private ?array $namespaces;
 
 
     /** @var Entity[] */
-    private $meta = [];
+    private array $meta = [];
 
-    private $classMap = [];
+    private array $classMap = [];
 
-    private $classMapAuthoritative = false;
+    private bool $classMapAuthoritative = false;
 
 
     public function __construct(Compiler $compiler, ?Cache\IStorage $cacheStorage = null, ?array $namespaces = null) {

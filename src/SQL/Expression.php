@@ -7,9 +7,9 @@ namespace PORM\SQL;
 
 class Expression {
 
-    private $sql;
+    private string $sql;
 
-    private $parameters;
+    private array $parameters;
 
 
     public function __construct(string $sql, ?array $parameters = null) {

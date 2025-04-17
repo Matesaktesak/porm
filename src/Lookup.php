@@ -9,26 +9,23 @@ use PORM\Exceptions\NoResultException;
 
 class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
 
-    private $manager;
+    private EntityManager $manager;
 
-    private $queryBuilder;
+    private QueryBuilder $queryBuilder;
 
-    private $metadata;
+    private Metadata\Entity $metadata;
 
-    private $alias;
+    private ?string $alias;
 
-    private $associateBy = null;
+    private ?string $associateBy = null;
 
-    private $relations = [];
+    private array $relations = [];
 
-    private $aggregations = [];
+    private array $aggregations = [];
 
-    /** @var \Generator|array */
-    private $result = null;
+    private \Generator|array|null $result = null;
 
-    /** @var int */
-    private $count = null;
-
+    private ?int $count = null;
 
 
     public function __construct(EntityManager $manager, Metadata\Entity $metadata, ?string $alias = null) {
@@ -39,96 +36,92 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
     }
 
 
-    public function where(?array $where) : self {
+    public function where(?array $where): self {
         $this->queryBuilder->where($where);
         return $this;
     }
 
-    public function andWhere(array $where) : self {
+    public function andWhere(array $where): self {
         $this->queryBuilder->andWhere($where);
         return $this;
     }
 
-    public function orWhere(array $where) : self {
+    public function orWhere(array $where): self {
         $this->queryBuilder->orWhere($where);
         return $this;
     }
 
-    public function orderBy($orderBy) : self {
+    public function orderBy($orderBy): self {
         $this->queryBuilder->orderBy($orderBy === null || is_array($orderBy) ? $orderBy : [$orderBy]);
         return $this;
     }
 
-    public function limit(?int $limit) : self {
+    public function limit(?int $limit): self {
         $this->queryBuilder->limit($limit);
         return $this;
     }
 
-    public function offset(?int $offset) : self {
+    public function offset(?int $offset): self {
         $this->queryBuilder->offset($offset);
         return $this;
     }
 
-    public function associateBy(?string $associateBy) : self {
+    public function associateBy(?string $associateBy): self {
         $this->associateBy = $associateBy;
         return $this;
     }
 
-    public function join($relation, ?string $alias = null, string $type = 'LEFT') : self {
+    public function join($relation, ?string $alias = null, string $type = 'LEFT'): self {
         $this->queryBuilder->join($relation instanceof Lookup ? $relation->getQueryBuilder() : $relation, $alias, null, $type);
         return $this;
     }
 
-    public function leftJoin($relation, ?string $alias = null) : self {
+    public function leftJoin($relation, ?string $alias = null): self {
         $this->queryBuilder->leftJoin($relation instanceof Lookup ? $relation->getQueryBuilder() : $relation, $alias);
         return $this;
     }
 
-    public function innerJoin($relation, ?string $alias = null) : self {
+    public function innerJoin($relation, ?string $alias = null): self {
         $this->queryBuilder->innerJoin($relation instanceof Lookup ? $relation->getQueryBuilder() : $relation, $alias);
         return $this;
     }
 
-    public function with(string ... $relations) : self {
+    public function with(string ...$relations): self {
         array_push($this->relations, ... array_diff($relations, $this->relations));
         return $this;
     }
 
-    public function withAggregate(string ... $properties) : self {
+    public function withAggregate(string ...$properties): self {
         array_push($this->aggregations, ... array_diff($properties, $this->aggregations));
         return $this;
     }
 
 
-
-
-    public function isLoaded() : bool {
+    public function isLoaded(): bool {
         return $this->result !== null;
     }
 
-    public function load() : self {
+    public function load(): self {
         $this->loadResult();
         return $this;
     }
 
-    public function extract(string $property, ?string $key = null) : array {
+    public function extract(string $property, ?string $key = null): array {
         $this->loadResult(true);
         return array_column($this->result, $property, $key);
     }
 
 
-
-
-    public function getQueryBuilder() : QueryBuilder {
+    public function getQueryBuilder(): QueryBuilder {
         return $this->queryBuilder;
     }
 
-    public function getIterator() : \Generator {
+    public function getIterator(): \Generator {
         $this->loadResult();
         yield from $this->result;
     }
 
-    public function count(bool $loadResult = false) : int {
+    public function count(bool $loadResult = false): int {
         if ($loadResult) {
             $this->loadResult();
         }
@@ -137,31 +130,31 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
         return $this->count;
     }
 
-    public function offsetExists($offset) {
+    public function offsetExists($offset): bool {
         $this->loadResult(true);
         return isset($this->result[$offset]);
     }
 
-    public function offsetGet($offset) {
+    public function offsetGet($offset): mixed {
         $this->loadResult(true);
         return $this->result[$offset];
     }
 
-    public function offsetSet($offset, $value) {
+    public function offsetSet($offset, $value): never {
         throw new \RuntimeException('Lookup result is read-only');
     }
 
-    public function offsetUnset($offset) {
+    public function offsetUnset($offset): never {
         throw new \RuntimeException('Lookup result is read-only');
     }
 
 
-    public function toArray() : array {
+    public function toArray(): array {
         $this->loadResult(true);
         return $this->result;
     }
 
-    public function keys() : array {
+    public function keys(): array {
         $this->loadResult(true);
         return array_keys($this->result);
     }
@@ -182,7 +175,7 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
     }
 
 
-    private function loadResult(bool $eager = false) : void {
+    private function loadResult(bool $eager = false): void {
         if ($this->result === null) {
             $this->result = $this->manager->execute($this->queryBuilder->getQuery(), $this->metadata);
 
@@ -228,13 +221,13 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
         }
     }
 
-    private function ensureArrayResult() : void {
+    private function ensureArrayResult(): void {
         if (!is_array($this->result)) {
             $this->result = iterator_to_array($this->result);
         }
     }
 
-    private function loadCount() : void {
+    private function loadCount(): void {
         if ($this->count === null) {
             if ($this->result !== null) {
                 $this->ensureArrayResult();
@@ -249,7 +242,7 @@ class Lookup implements \IteratorAggregate, \ArrayAccess, \Countable {
                     ->offset(null);
 
                 $result = $this->manager->execute($qb->getQuery());
-                $this->count = (int) $result->fetchSingle();
+                $this->count = (int)$result->fetchSingle();
             }
         }
     }

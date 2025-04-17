@@ -14,9 +14,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class RunMigrationsCommand extends Command {
 
-    private $resolver;
+    private Resolver $resolver;
 
-    private $runner;
+    private Runner $runner;
 
 
     public function __construct(Resolver $resolver, Runner $runner) {

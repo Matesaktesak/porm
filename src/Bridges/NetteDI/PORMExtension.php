@@ -18,11 +18,11 @@ use Tracy\Debugger;
 
 class PORMExtension extends CompilerExtension {
 
-    private $defaults = Factory::DEFAULTS;
+    private array $defaults = Factory::DEFAULTS;
 
-    private $cacheDir;
+    private ?string $cacheDir;
 
-    private $debugMode;
+    private ?bool $debugMode;
 
 
     public function __construct(?string $cacheDir = null, ?bool $debugMode = null) {

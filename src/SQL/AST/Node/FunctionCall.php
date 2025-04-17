@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class FunctionCall extends Expression {
 
     /** @var string */
-    public $name;
+    public string $name;
 
     /** @var ExpressionList */
-    public $arguments = null;
+    public ?ExpressionList $arguments = null;
 
 
     public function __construct(string $name, Expression ... $arguments) {

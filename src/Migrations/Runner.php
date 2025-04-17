@@ -10,7 +10,7 @@ use PORM\Exceptions\MigrationException;
 
 class Runner {
 
-    private $driver;
+    private IDriver $driver;
 
 
     public function __construct(IDriver $driver) {
@@ -76,6 +76,7 @@ class Runner {
             } else {
                 preg_match('(' . preg_quote($delimiter) . "\\s*|$parse)", $query, $match, PREG_OFFSET_CAPTURE, $offset); // should always match
                 list($found, $pos) = $match[0];
+                $pos = (int)$pos;
 
                 if (!$found && rtrim($query) == "") {
                     break;
@@ -86,7 +87,7 @@ class Runner {
                 if ($found && rtrim($found) != $delimiter) { // find matching quote or comment end
                     while (preg_match('(' . ($found == '/*' ? '\\*/' : ($found == '[' ? ']' : (preg_match('~^-- |^#~', $found) ? "\n" : preg_quote($found) . "|\\\\."))) . '|$)s', $query, $match, PREG_OFFSET_CAPTURE, $offset)) { //! respect sql_mode NO_BACKSLASH_ESCAPES
                         $s = $match[0][0];
-                        $offset = $match[0][1] + strlen($s);
+                        $offset = (int)$match[0][1] + strlen($s);
 
                         if ($s[0] != "\\") {
                             break;

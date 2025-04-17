@@ -10,9 +10,9 @@ use PORM\Exceptions\InvalidQueryException;
 abstract class Query extends Node {
 
 
-    private $paramId = -1;
+    private int $paramId = -1;
 
-    private $paramIndex = -1;
+    private int $paramIndex = -1;
 
 
     public function mapResource(array $fields, ?string $alias = null, ?string $entity = null, bool $forceNullable = false) : void {

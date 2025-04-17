@@ -10,20 +10,20 @@ use PORM\Exception;
 
 class ResultSet implements \IteratorAggregate {
 
-    private $driver;
+    private IDriver $driver;
 
     private $resource;
 
-    private $processors = [];
+    private array $processors = [];
 
-    private $fetchedRows = 0;
+    private int $fetchedRows = 0;
 
     private $fetchStartTime = null;
 
     private $fetchEndTime = null;
 
     /** @var string */
-    private $resultId = null;
+    private ?string $resultId = null;
 
 
     public function __construct(IDriver $driver, $resource) {

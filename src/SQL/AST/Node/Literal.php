@@ -15,10 +15,10 @@ class Literal extends Expression {
         TYPE_NULL = 'null';
 
     /** @var string|int|float|bool|null */
-    public $value;
+    public string|int|bool|null|float $value;
 
     /** @var string */
-    public $type;
+    public string $type;
 
 
     public static function string(string $value) : self {

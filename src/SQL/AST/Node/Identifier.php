@@ -8,7 +8,7 @@ namespace PORM\SQL\AST\Node;
 class Identifier extends Expression {
 
     /** @var string */
-    public $value;
+    public string $value;
 
 
     public function __construct(string $value) {

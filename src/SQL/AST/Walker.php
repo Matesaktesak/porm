@@ -8,25 +8,20 @@ namespace PORM\SQL\AST;
 class Walker {
 
     /** @var IVisitor[][] */
-    private $visitors = [];
+    private array $visitors = [];
 
     /** @var \SplObjectStorage|Context[] */
-    private $contexts;
+    private \SplObjectStorage|array $contexts;
 
-    /** @var int */
-    private $depth = -1;
+    private int $depth = -1;
 
-    /** @var bool */
-    private $skip = false;
-
-    /** @var Node\Node|null */
-    private $replacement = null;
+    private Node\Node|null $replacement = null;
 
     /** @var string[] */
-    private $properties = [];
+    private array $properties = [];
 
     /** @var array<Node\Node|string> */
-    private $stack = [];
+    private array $stack = [];
 
 
 
@@ -94,33 +89,31 @@ class Walker {
             }
         }
 
-        if (!$this->skip) {
-            foreach ($node->getTraversableProperties() as $property => $array) {
-                array_unshift($this->properties, $property);
+        foreach ($node->getTraversableProperties() as $property => $array) {
+            array_unshift($this->properties, $property);
 
-                if ($array) {
-                    foreach ($node->$property as & $value) {
-                        while ($replacement = $this->visit($value, $visitors, $contexts)) {
-                            $value = $replacement;
-                        }
-                    }
-                } else if ($node->$property) {
-                    while ($replacement = $this->visit($node->$property, $visitors, $contexts)) {
-                        $node->$property = $replacement;
+            if ($array) {
+                foreach ($node->$property as & $value) {
+                    while ($replacement = $this->visit($value, $visitors, $contexts)) {
+                        $value = $replacement;
                     }
                 }
-
-                array_shift($this->properties);
+            } else if ($node->$property) {
+                while ($replacement = $this->visit($node->$property, $visitors, $contexts)) {
+                    $node->$property = $replacement;
+                }
             }
 
-            foreach ($leave as $visitor) {
-                $visitor->leave($node, $contexts[$visitor]);
+            array_shift($this->properties);
+        }
 
-                if ($this->replacement) {
-                    array_pop($this->stack);
-                    $this->depth--;
-                    return $this->replacement;
-                }
+        foreach ($leave as $visitor) {
+            $visitor->leave($node, $contexts[$visitor]);
+
+            if ($this->replacement) {
+                array_pop($this->stack);
+                $this->depth--;
+                return $this->replacement;
             }
         }
 
@@ -216,6 +209,4 @@ class Walker {
     public function getRootType() : ?string {
         return $this->stack[0][0] ?? null;
     }
-
-
 }

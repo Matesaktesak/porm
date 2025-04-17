@@ -373,7 +373,7 @@ class Parser {
      * @param Stream $stream
      * @param Node\SelectQuery|Node\UpdateQuery|Node\DeleteQuery $query
      */
-    private function parseCommonClauses(Stream $stream, $query) : void {
+    private function parseCommonClauses(Stream $stream, Node\DeleteQuery|Node\UpdateQuery|Node\SelectQuery $query) : void {
         if ($stream->nextToken('ORDER BY')) {
             do {
                 $query->orderBy[] = new Node\OrderExpression(

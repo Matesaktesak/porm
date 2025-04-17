@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class CaseExpression extends Expression {
 
     /** @var CaseBranch[] */
-    public $branches = [];
+    public array $branches = [];
 
     /** @var Expression|null */
-    public $else = null;
+    public ?Expression $else = null;
 
 
     public function getTraversableProperties() : array {

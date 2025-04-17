@@ -12,7 +12,7 @@ class EventDispatcher {
     private $listenerResolver;
 
     /** @var callable[][] */
-    private $listeners = [];
+    private array $listeners = [];
 
 
     public function setListenerResolver(callable $provider) : void {
@@ -22,10 +22,10 @@ class EventDispatcher {
 
     /**
      * @param string $event
-     * @param object|string|callable $listener
+     * @param callable|object|string $listener
      * @param string|null $method
      */
-    public function addListener(string $event, $listener, ?string $method = null) : void {
+    public function addListener(string $event, callable|object|string $listener, ?string $method = null) : void {
         if (is_string($listener)) {
             if (!isset($this->listenerResolver)) {
                 throw new \InvalidArgumentException("Listener references are not supported when listener resolver is not set");

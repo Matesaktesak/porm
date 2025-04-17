@@ -8,7 +8,7 @@ namespace PORM\SQL\AST\Node;
 class TableReference extends Node implements ITable {
 
     /** @var Identifier */
-    public $name;
+    public Identifier $name;
 
 
     public function __construct(string $name) {

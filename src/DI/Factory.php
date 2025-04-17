@@ -32,10 +32,10 @@ class Factory {
 
 
     /** @var array */
-    private $config;
+    private array $config;
 
     /** @var string */
-    private $cacheDir;
+    private ?string $cacheDir;
 
     /** @var callable */
     private $cacheStorageFactory;

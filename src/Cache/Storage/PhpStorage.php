@@ -9,11 +9,11 @@ use PORM\Cache\IStorage;
 
 class PhpStorage implements IStorage {
 
-    private $cacheDir;
+    private string $cacheDir;
 
     private $serializer;
 
-    private $initialized = false;
+    private bool $initialized = false;
 
 
     public function __construct(string $cacheDir, string $namespace, ?callable $serializer = null) {

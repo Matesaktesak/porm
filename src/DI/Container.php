@@ -20,58 +20,58 @@ use Tracy\Debugger;
 class Container {
 
     /** @var Factory */
-    private $factory;
+    private Factory $factory;
 
     /** @var Connection */
-    private $connection;
+    private Connection $connection;
 
     /** @var Drivers\IDriver */
-    private $driver;
+    private Drivers\IDriver $driver;
 
     /** @var Drivers\IPlatform */
-    private $platform;
+    private Drivers\IPlatform $platform;
 
     /** @var EventDispatcher */
-    private $eventDispatcher;
+    private EventDispatcher $eventDispatcher;
 
     /** @var EntityManager */
-    private $entityManager;
+    private EntityManager $entityManager;
 
     /** @var object[] */
-    private $managers = [];
+    private array $managers = [];
 
     /** @var Metadata\Compiler */
-    private $metadataCompiler;
+    private Metadata\Compiler $metadataCompiler;
 
     /** @var Metadata\Provider */
-    private $metadataProvider;
+    private Metadata\Provider $metadataProvider;
 
     /** @var Metadata\INamingStrategy */
-    private $namingStrategy;
+    private Metadata\INamingStrategy $namingStrategy;
 
     /** @var Mapper */
-    private $mapper;
+    private Mapper $mapper;
 
     /** @var SQL\Translator */
-    private $translator;
+    private SQL\Translator $translator;
 
     /** @var Migrations\Resolver */
-    private $migrationResolver;
+    private Migrations\Resolver $migrationResolver;
 
     /** @var Migrations\Runner */
-    private $migrationRunner;
+    private Migrations\Runner $migrationRunner;
 
     /** @var SQL\AST\Parser */
-    private $astParser;
+    private SQL\AST\Parser $astParser;
 
     /** @var SQL\AST\Builder */
-    private $astBuilder;
+    private SQL\AST\Builder $astBuilder;
 
     /** @var Bridges\Tracy\BarPanel */
-    private $tracyBarPanel;
+    private Bridges\Tracy\BarPanel $tracyBarPanel;
 
     /** @var Bridges\Tracy\DebuggerPanel */
-    private $tracyDebuggerPanel;
+    private Bridges\Tracy\DebuggerPanel $tracyDebuggerPanel;
 
 
 

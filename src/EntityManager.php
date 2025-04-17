@@ -5,23 +5,23 @@ declare(strict_types=1);
 namespace PORM;
 
 
+use PORM\Metadata\Provider;
+
 class EntityManager {
 
-    private $connection;
+    private Connection $connection;
 
-    private $mapper;
+    private Mapper $mapper;
 
-    private $metadataProvider;
+    private Metadata\Provider $metadataProvider;
 
-    private $translator;
+    private SQL\Translator $translator;
 
-    private $eventDispatcher;
+    private EventDispatcher $eventDispatcher;
 
-    private $astBuilder;
+    private SQL\AST\Builder $astBuilder;
 
-    private $identityMap = [];
-
-
+    private array $identityMap = [];
 
     public function __construct(
         Connection $connection,
@@ -87,7 +87,7 @@ class EntityManager {
         $changeset = [];
 
         foreach ($data as $prop => $value) {
-            if (!isset($orig[$prop]) && !key_exists($prop, $orig) || $orig[$prop] !== $data[$prop]) {
+            if (!isset($orig[$prop]) && !key_exists($prop, $orig) || $orig[$prop] !== $value) {
                 $changeset[$prop] = [$orig[$prop] ?? null, $value];
             } else {
                 unset($data[$prop]);
@@ -576,7 +576,7 @@ class EntityManager {
             $targetProp = $target->getRelationTarget($meta->getEntityClass(), $info['relation']);
             $inverse = $target->getRelationInfo($targetProp);
         } else {
-            throw new \RuntimeException("Cannot determine inverse parameters of relation {$meta->getEntityClass()}#{$relation}");
+            throw new \RuntimeException("Cannot determine inverse parameters of relation {$meta->getEntityClass()}#{$info['relation']}");
         }
 
         $identifier = $meta->getSingleIdentifierProperty();

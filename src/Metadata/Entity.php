@@ -8,46 +8,46 @@ namespace PORM\Metadata;
 class Entity {
 
     /** @var string */
-    private $entityClass;
+    private string $entityClass;
 
     /** @var string */
-    private $managerClass;
+    private ?string $managerClass;
 
     /** @var string */
-    private $tableName;
+    private string $tableName;
 
     /** @var bool */
-    private $readonly;
+    private bool $readonly;
 
     /** @var array */
-    private $properties;
+    private array $properties;
 
     /** @var array */
-    private $relations;
+    private array $relations;
 
     /** @var array */
-    private $aggregateProperties;
+    private array $aggregateProperties;
 
     /** @var array */
-    private $identifierProperties;
+    private array $identifierProperties;
 
     /** @var array */
-    private $fieldMap;
+    private array $fieldMap;
 
     /** @var array */
-    private $propertyMap;
+    private array $propertyMap;
 
     /** @var array */
-    private $relationMap;
+    private array $relationMap;
 
     /** @var string */
-    private $generatedProperty;
+    private ?string $generatedProperty;
 
     /** @var \ReflectionClass */
-    private $classReflection = null;
+    private ?\ReflectionClass $classReflection = null;
 
     /** @var \ReflectionProperty[] */
-    private $propertyReflections = [];
+    private array $propertyReflections = [];
 
 
     public function __construct(
@@ -100,7 +100,6 @@ class Entity {
         } else {
             if (!isset($this->propertyReflections[$property])) {
                 $this->propertyReflections[$property] = $this->getReflection()->getProperty($property);
-                $this->propertyReflections[$property]->setAccessible(true);
             }
 
             return $this->propertyReflections[$property];

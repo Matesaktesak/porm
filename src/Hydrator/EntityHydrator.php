@@ -10,9 +10,9 @@ use PORM\Metadata;
 
 class EntityHydrator {
 
-    private $em;
+    private EntityManager $em;
 
-    private $meta;
+    private Metadata\Entity $meta;
 
 
     public function __construct(EntityManager $em, Metadata\Entity $meta) {

@@ -10,22 +10,22 @@ use PORM\SQL\AST\Node as AST;
 
 class QueryBuilder {
 
-    private $translator;
+    private SQL\Translator $translator;
 
-    private $astBuilder;
+    private SQL\AST\Builder $astBuilder;
 
     /** @var Entity|QueryBuilder|string */
-    private $from = null;
+    private string|null|QueryBuilder|Entity $from = null;
 
-    private $alias;
+    private ?string $alias;
 
     private $fields = null;
 
-    private $join = [];
+    private array $join = [];
 
     private $where = null;
 
-    private $groupBy = [];
+    private array $groupBy = [];
 
     private $having = null;
 
@@ -35,7 +35,7 @@ class QueryBuilder {
 
     private $offset = null;
 
-    private $union = [];
+    private array $union = [];
 
 
     public function __construct(SQL\Translator $translator, SQL\AST\Builder $astBuilder, ?Metadata\Entity $entity = null, ?string $alias = null) {

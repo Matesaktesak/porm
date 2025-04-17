@@ -8,12 +8,12 @@ namespace PORM\SQL\AST\Node;
 trait CommonClausesTrait {
 
     /** @var OrderExpression[] */
-    public $orderBy = [];
+    public array $orderBy = [];
 
     /** @var Expression|null */
-    public $limit = null;
+    public ?Expression $limit = null;
 
     /** @var Expression|null */
-    public $offset = null;
+    public ?Expression $offset = null;
 
 }

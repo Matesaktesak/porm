@@ -12,7 +12,7 @@ use PORM\SQL\AST\Node;
 
 class AssignmentJoiningVisitor implements IEnterVisitor {
 
-    private $metadataProvider;
+    private Provider $metadataProvider;
 
 
     public function __construct(Provider $metadataProvider) {

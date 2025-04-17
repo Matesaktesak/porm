@@ -13,13 +13,13 @@ class Query {
                  HYDRATE_MIXED = 'mixed';
 
 
-    private $sql;
+    private string $sql;
 
-    private $parameterIndex = [];
+    private array $parameterIndex = [];
 
-    private $parameterMap;
+    private array $parameterMap;
 
-    private $resultMap;
+    private array $resultMap;
 
 
 

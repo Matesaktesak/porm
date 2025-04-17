@@ -7,7 +7,7 @@ namespace PORM\SQL\AST\Node;
 
 abstract class Node {
 
-    public $attributes = [];
+    public array $attributes = [];
 
 
     public function getTraversableProperties() : array {

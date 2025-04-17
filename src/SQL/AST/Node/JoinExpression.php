@@ -11,10 +11,10 @@ class JoinExpression extends TableExpression {
         JOIN_INNER = 'INNER';
 
     /** @var string */
-    public $type = self::JOIN_LEFT;
+    public string $type = self::JOIN_LEFT;
 
     /** @var Expression|null */
-    public $condition = null;
+    public ?Expression $condition = null;
 
 
     public function __construct(ITable $table, string $type, ?string $alias = null) {

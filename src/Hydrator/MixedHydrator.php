@@ -10,11 +10,11 @@ use PORM\Metadata;
 
 class MixedHydrator {
 
-    private $em;
+    private EntityManager $em;
 
-    private $meta;
+    private Metadata\Entity $meta;
 
-    private $entityKeys;
+    private array $entityKeys;
 
 
     public function __construct(EntityManager $em, Metadata\Entity $meta) {

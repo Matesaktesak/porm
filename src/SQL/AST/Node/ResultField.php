@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class ResultField extends Node {
 
     /** @var Expression */
-    public $value;
+    public Expression $value;
 
     /** @var Identifier|null */
-    public $alias = null;
+    public ?Identifier $alias = null;
 
 
     public function __construct(Expression $value, ?string $alias = null) {

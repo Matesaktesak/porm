@@ -9,12 +9,12 @@ class Connection {
 
 
     /** @var callable[] */
-    private $listeners = [];
+    private array $listeners = [];
 
 
-    private $driver;
+    private Drivers\IDriver $driver;
 
-    private $platform;
+    private Drivers\IPlatform $platform;
 
 
     public function __construct(Drivers\IDriver $driver, Drivers\IPlatform $platform) {
@@ -104,9 +104,6 @@ class Connection {
 
 
     public function __destruct() {
-        if ($this->driver) {
-            $this->disconnect();
-        }
+        $this->disconnect();
     }
-
 }

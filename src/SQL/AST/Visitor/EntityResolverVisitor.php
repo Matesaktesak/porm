@@ -14,7 +14,7 @@ use PORM\SQL\AST\Node;
 
 class EntityResolverVisitor implements IEnterVisitor {
 
-    private $metadataProvider;
+    private Provider $metadataProvider;
 
 
     public function __construct(Provider $provider) {

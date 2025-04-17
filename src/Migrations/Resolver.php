@@ -10,11 +10,11 @@ use PORM\Drivers\IPlatform;
 
 class Resolver {
 
-    private $driver;
+    private IDriver $driver;
 
-    private $platform;
+    private IPlatform $platform;
 
-    private $migrationsDir;
+    private string $migrationsDir;
 
 
     public function __construct(IDriver $driver, IPlatform $platform, string $migrationsDir) {

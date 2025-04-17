@@ -7,7 +7,7 @@ namespace PORM;
 
 class Mapper {
 
-    private $platform;
+    private Drivers\IPlatform $platform;
 
 
     public function __construct(Drivers\IPlatform $platform) {
@@ -15,7 +15,7 @@ class Mapper {
     }
 
 
-    public function extractIdentifier(Metadata\Entity $meta, $entity) : ?array {
+    public function extractIdentifier(Metadata\Entity $meta, $entity): ?array {
         $properties = $meta->getIdentifierProperties();
 
         if (empty($properties)) {
@@ -25,7 +25,7 @@ class Mapper {
         return $this->extract($meta, $entity, $properties);
     }
 
-    public function extractRawIdentifier(Metadata\Entity $meta, $id) : array {
+    public function extractRawIdentifier(Metadata\Entity $meta, $id): array {
         $properties = $meta->getIdentifierProperties();
 
         if (count($properties) === 1) {
@@ -53,7 +53,7 @@ class Mapper {
         return $tmp;
     }
 
-    public function extract(Metadata\Entity $meta, $entity, ?array $properties = null) : array {
+    public function extract(Metadata\Entity $meta, $entity, ?array $properties = null): array {
         if (!$meta->getReflection()->isInstance($entity)) {
             throw new \InvalidArgumentException("Entity is not managed by this EntityManager");
         }
@@ -71,7 +71,7 @@ class Mapper {
         return $data;
     }
 
-    public function hydrate(Metadata\Entity $meta, $entity, array $data) : array {
+    public function hydrate(Metadata\Entity $meta, $entity, array $data): array {
         foreach ($meta->getProperties() as $prop) {
             $meta->getReflection($prop)->setValue($entity, $data[$prop] ?? null);
         }
@@ -79,7 +79,7 @@ class Mapper {
         return $data;
     }
 
-    public function convertFromDb(array $data, ?array $info = null) : array {
+    public function convertFromDb(array $data, ?array $info = null): array {
         foreach ($data as $key => $value) {
             $nfo = $info[$key] ?? null;
             $data[$key] = $this->convertFromDbType($value, $nfo['type'] ?? null, $nfo['nullable'] ?? null);
@@ -88,7 +88,7 @@ class Mapper {
         return $data;
     }
 
-    public function convertToDb(array $data, ?array $info = null) : array {
+    public function convertToDb(array $data, ?array $info = null): array {
         foreach ($data as $key => $value) {
             $nfo = $info[$key] ?? null;
             $data[$key] = $this->convertToDbType($value, $nfo['type'] ?? null, $nfo['nullable'] ?? null);
@@ -104,54 +104,70 @@ class Mapper {
         }
 
         switch ($type ?? $this->guessType($value)) {
-            case 'string': return (string) $value;
-            case 'int': return (int) $value;
-            case 'float': return (float) $value;
-            case 'bool': return $this->platform->fromPlatformBool($value);
-            case 'date': return $this->platform->fromPlatformDate($value);
-            case 'time': return $this->platform->fromPlatformTime($value);
-            case 'datetime': return $this->platform->fromPlatformDateTime($value);
-            case 'json': return json_decode($value, true);
+            case 'string':
+                return (string)$value;
+            case 'int':
+                return (int)$value;
+            case 'float':
+                return (float)$value;
+            case 'bool':
+                return $this->platform->fromPlatformBool($value);
+            case 'date':
+                return $this->platform->fromPlatformDate($value);
+            case 'time':
+                return $this->platform->fromPlatformTime($value);
+            case 'datetime':
+                return $this->platform->fromPlatformDateTime($value);
+            case 'json':
+                return json_decode($value, true);
             default:
                 throw new \InvalidArgumentException("Unknown property type");
         }
     }
 
-    public function convertToDbType($value, ?string $type = null, ?bool $nullable = null) {
+    public function convertToDbType($value, ?string $type = null, ?bool $nullable = null): float|false|int|string|null {
         if ($this->returnNull($value, $nullable)) {
             return null;
         }
 
-        switch ($type ?? $this->guessType($value)) {
-            case 'string': return (string) $value;
-            case 'int': return (int) $value;
-            case 'float': return (float) $value;
-            case 'bool': return $this->platform->toPlatformBool($value);
-            case 'date': return $this->platform->toPlatformDate($value instanceof \DateTimeInterface ? $value : new \DateTimeImmutable($value));
-            case 'time': return $this->platform->toPlatformTime($value instanceof \DateTimeInterface ? $value : new \DateTimeImmutable($value));
-            case 'datetime': return $this->platform->toPlatformDateTime($value instanceof \DateTimeInterface ? $value : new \DateTimeImmutable($value));
-            case 'json': return json_encode($value);
-            case null: return (string) $value;
-            default:
-                throw new \InvalidArgumentException("Unknown property type '$type'");
-        }
+        return match ($type ?? $this->guessType($value)) {
+            null, 'string' => (string)$value,
+            'int' => (int)$value,
+            'float' => (float)$value,
+            'bool' => $this->platform->toPlatformBool($value),
+            'date' => $this->platform->toPlatformDate($value instanceof \DateTimeInterface ? $value : new \DateTimeImmutable($value)),
+            'time' => $this->platform->toPlatformTime($value instanceof \DateTimeInterface ? $value : new \DateTimeImmutable($value)),
+            'datetime' => $this->platform->toPlatformDateTime($value instanceof \DateTimeInterface ? $value : new \DateTimeImmutable($value)),
+            'json' => json_encode($value),
+            default => throw new \InvalidArgumentException("Unknown property type '$type'"),
+        };
     }
 
-    private function guessType($value) : ?string {
+    private function guessType($value): ?string {
         switch (true) {
-            case is_int($value): return 'int';
-            case is_float($value): return 'float';
-            case is_bool($value): return 'bool';
-            case is_array($value): return 'json';
-            case $value instanceof \DateTimeInterface: return 'datetime';
+            case is_int($value):
+                return 'int';
+            case is_float($value):
+                return 'float';
+            case is_bool($value):
+                return 'bool';
+            case is_array($value):
+                return 'json';
+            case $value instanceof \DateTimeInterface:
+                return 'datetime';
             case is_string($value):
                 if (preg_match('~^(?:(?<n>(?:[1-9]\d*|\d)(?<f>\.\d+)?)|(?<d>\d\d\d\d-\d\d-\d\d)|(?<t>\d\d:\d\d(?::\d\d)?)|(?<dt>(?&d) (?&t)))$~', $value, $m)) {
                     switch (true) {
-                        case isset($m['f']) && $m['f'] !== '': return 'float';
-                        case isset($m['n']) && $m['n'] !== '': return 'int';
-                        case isset($m['d']) && $m['d'] !== '': return 'date';
-                        case isset($m['t']) && $m['t'] !== '': return 'time';
-                        case isset($m['dt']) && $m['dt'] !== '': return 'datetime';
+                        case isset($m['f']) && $m['f'] !== '':
+                            return 'float';
+                        case isset($m['n']) && $m['n'] !== '':
+                            return 'int';
+                        case isset($m['d']) && $m['d'] !== '':
+                            return 'date';
+                        case isset($m['t']) && $m['t'] !== '':
+                            return 'time';
+                        case isset($m['dt']) && $m['dt'] !== '':
+                            return 'datetime';
                     }
                 }
 
@@ -161,7 +177,7 @@ class Mapper {
         return null;
     }
 
-    private function returnNull($value, ?bool $nullable) : bool {
+    private function returnNull($value, ?bool $nullable): bool {
         if ($value === null) {
             if ($nullable !== false) {
                 return true;

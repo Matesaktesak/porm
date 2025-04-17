@@ -7,21 +7,21 @@ namespace PORM\Metadata;
 
 class Compiler {
 
-    private $namingStrategy;
+    private INamingStrategy $namingStrategy;
 
     /** @var ICompilerPass[] */
-    private $passes;
+    private array $passes;
 
     private $classes;
 
     private $discovered;
 
-    private $meta;
+    private array $meta;
 
     private $reflections;
 
     /** @var \SplObjectStorage|array[] */
-    private $annotations;
+    private array|\SplObjectStorage $annotations;
 
 
     public function __construct(INamingStrategy $namingStrategy) {
@@ -98,7 +98,7 @@ class Compiler {
      * @param \ReflectionClass|\ReflectionProperty $reflector
      * @return array
      */
-    public function getAnnotations($reflector) : array {
+    public function getAnnotations(\ReflectionClass|\ReflectionProperty $reflector) : array {
         if (!$this->annotations->contains($reflector)) {
             $this->annotations[$reflector] = AnnotationParser::parse($reflector->getDocComment() ?: null);
         }

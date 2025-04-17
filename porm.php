@@ -13,11 +13,11 @@ spl_autoload_register(function(string $class) {
 
 class porm {
 
-    private static $container;
+    private static \PORM\DI\Container $container;
 
-    private static $config = [];
+    private static array $config = [];
 
-    private static $cacheDir = null;
+    private static string|null $cacheDir = null;
 
 
     public static function init(array $config, ?string $cacheDir = null) : void {

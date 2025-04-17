@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class AssignmentExpression extends Node {
 
     /** @var Identifier */
-    public $target;
+    public Identifier $target;
 
     /** @var Expression */
-    public $value;
+    public Expression $value;
 
 
     public function __construct(Identifier $target, Expression $value) {

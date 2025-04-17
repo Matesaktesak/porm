@@ -13,7 +13,7 @@ use PORM\SQL\AST\Node;
 
 class JoinConditionResolverVisitor implements IEnterVisitor {
 
-    private $metadataProvider;
+    private Provider $metadataProvider;
 
 
     public function __construct(Provider $provider) {

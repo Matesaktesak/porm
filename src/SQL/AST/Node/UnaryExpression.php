@@ -8,10 +8,10 @@ namespace PORM\SQL\AST\Node;
 class UnaryExpression extends Expression {
 
     /** @var string */
-    public $operator;
+    public string $operator;
 
     /** @var Expression */
-    public $argument;
+    public Expression $argument;
 
 
     public function __construct(string $operator, Expression $argument) {

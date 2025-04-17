@@ -8,7 +8,7 @@ namespace PORM\SQL\AST\Node;
 class SubqueryExpression extends Expression implements ITable {
 
     /** @var SelectQuery */
-    public $query;
+    public SelectQuery $query;
 
     public function __construct(SelectQuery $query) {
         $this->query = $query;
