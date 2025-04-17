@@ -103,26 +103,17 @@ class Mapper {
             return null;
         }
 
-        switch ($type ?? $this->guessType($value)) {
-            case 'string':
-                return (string)$value;
-            case 'int':
-                return (int)$value;
-            case 'float':
-                return (float)$value;
-            case 'bool':
-                return $this->platform->fromPlatformBool($value);
-            case 'date':
-                return $this->platform->fromPlatformDate($value);
-            case 'time':
-                return $this->platform->fromPlatformTime($value);
-            case 'datetime':
-                return $this->platform->fromPlatformDateTime($value);
-            case 'json':
-                return json_decode($value, true);
-            default:
-                throw new \InvalidArgumentException("Unknown property type");
-        }
+        return match ($type ?? $this->guessType($value)) {
+            'string' => (string)$value,
+            'int' => (int)$value,
+            'float' => (float)$value,
+            'bool' => $this->platform->fromPlatformBool($value),
+            'date' => $this->platform->fromPlatformDate($value),
+            'time' => $this->platform->fromPlatformTime($value),
+            'datetime' => $this->platform->fromPlatformDateTime($value),
+            'json' => json_decode($value, true),
+            default => throw new \InvalidArgumentException("Unknown property type"),
+        };
     }
 
     public function convertToDbType($value, ?string $type = null, ?bool $nullable = null): float|false|int|string|null {

@@ -20,6 +20,9 @@ class Event {
 
     private ?int $affectedRows;
 
+    public $file;
+    public $line;
+
 
     public function __construct(string $query, ?array $parameters = null) {
         $this->query = $query;

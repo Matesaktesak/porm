@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace PORM\Bridges\NetteDI;
 
 use Composer\Autoload\ClassLoader;
+use Nette;
 use Nette\PhpGenerator;
 use Nette\DI\ContainerBuilder;
-use Nette\DI\Statement;
+use Nette\DI\Definitions\Statement;
+use Nette\Schema\Expect;
 use PORM\DI\Factory;
+use PORM\DI\FactoryConfiguration;
 use PORM\Metadata;
 use PORM\SQL;
 use Nette\DI\CompilerExtension;
@@ -17,8 +20,6 @@ use Tracy\Debugger;
 
 
 class PORMExtension extends CompilerExtension {
-
-    private array $defaults = Factory::DEFAULTS;
 
     private ?string $cacheDir;
 
@@ -30,17 +31,20 @@ class PORMExtension extends CompilerExtension {
         $this->debugMode = $debugMode;
     }
 
+    public function getConfigSchema(): Nette\Schema\Schema {
+        return Expect::from(new FactoryConfiguration);
+    }
 
-    public function loadConfiguration() : void {
+    public function loadConfiguration(): void {
+        $config = $this->config;
         $builder = $this->getContainerBuilder();
-        $config = $this->validateConfig($this->defaults);
 
-        if ($config['debugger'] === null) {
+        if ($config->debugger === null) {
             if ($this->debugMode === null) {
                 $this->debugMode = $builder->parameters['debugMode'];
             }
 
-            $config['debugger'] = $this->debugMode;
+            $config->debugger = $this->debugMode;
         }
 
         $builder->addDefinition($this->prefix('factory'))
@@ -101,7 +105,7 @@ class PORMExtension extends CompilerExtension {
             $builder->addDefinition($this->prefix('tracy.panel.debugger'))
                 ->setFactory($this->prefix('@factory::createTracyDebuggerPanel'));
 
-            if ($config['debugger']) {
+            if ($config->debugger) {
                 $builder->addDefinition($this->prefix('tracy.panel.bar'))
                     ->setFactory($this->prefix('@factory::createTracyBarPanel'));
 
@@ -111,11 +115,13 @@ class PORMExtension extends CompilerExtension {
         }
     }
 
-    public function beforeCompile() : void {
+    public function beforeCompile(): void {
         $builder = $this->getContainerBuilder();
-        $config = $this->getConfig();
 
-        if (class_exists(ClassLoader::class) && !empty($config['entities'])) {
+        /** @var FactoryConfiguration $config */
+        $config = $this->config;
+
+        if (class_exists(ClassLoader::class) && !empty($config->entities)) {
             $this->setupEntities($builder, $config);
         }
 
@@ -127,7 +133,7 @@ class PORMExtension extends CompilerExtension {
         $this->registerEventListeners($builder);
     }
 
-    public function afterCompile(PhpGenerator\ClassType $class) : void {
+    public function afterCompile(PhpGenerator\ClassType $class): void {
         $builder = $this->getContainerBuilder();
         $init = $class->getMethod('initialize');
 
@@ -145,9 +151,9 @@ class PORMExtension extends CompilerExtension {
     }
 
 
-    private function setupEntities(ContainerBuilder $builder, array $config) : void {
+    private function setupEntities(ContainerBuilder $builder, FactoryConfiguration $config): void {
         $finder = new Metadata\EntityFinder();
-        $map = $finder->getEntityClassMap($config['entities']);
+        $map = $finder->getEntityClassMap($config->entities);
         $def = $builder->getDefinition($this->prefix('metadata.provider'));
         $def->addSetup('setClassMap', [$map]);
 
@@ -183,18 +189,18 @@ class PORMExtension extends CompilerExtension {
     }
 
 
-    private function registerEventListeners(ContainerBuilder $builder) : void {
+    private function registerEventListeners(ContainerBuilder $builder): void {
         $eventDispatcher = $builder->getDefinition($this->prefix('events.dispatcher'));
         $listeners = $builder->findByTag('porm.entity.listener');
 
         foreach ($listeners as $listener => $options) {
             if (!isset($options['map'])) {
                 if (isset($options['event'])) {
-                    $options['events'] = (array) $options['event'];
+                    $options['events'] = (array)$options['event'];
                 }
 
                 if (isset($options['entity'])) {
-                    $options['entities'] = (array) $options['entity'];
+                    $options['entities'] = (array)$options['entity'];
                 }
 
                 $options['map'] = array_fill_keys($options['entities'], $options['events']);
@@ -204,7 +210,7 @@ class PORMExtension extends CompilerExtension {
                 foreach ($events as $event) {
                     $eventDispatcher->addSetup('addListener', [
                         'event' => $entity . '::' . $event,
-                        'listener' => (string) $listener,
+                        'listener' => (string)$listener,
                         'method' => $options['method'] ?? null,
                     ]);
                 }
@@ -215,13 +221,13 @@ class PORMExtension extends CompilerExtension {
 
         foreach ($listeners as $listener => $options) {
             if (isset($options['event'])) {
-                $options['events'] = (array) $options['event'];
+                $options['events'] = (array)$options['event'];
             }
 
             foreach ($options['events'] as $event) {
                 $eventDispatcher->addSetup('addListener', [
                     'event' => $event,
-                    'listener' => (string) $listener,
+                    'listener' => (string)$listener,
                     'method' => $options['method'] ?? null,
                 ]);
             }

@@ -17,47 +17,41 @@ use PORM\Cache;
 use PORM\Command;
 use Tracy\IBarPanel;
 
+class FactoryConfiguration {
+    public array $connection = [
+        'platform' => null,
+    ];
+    public array $entities = [];
+    public string $namingStrategy = 'snakeCase';
+    public ?string $migrationsDir;
+    public ?bool $debugger;
+}
 
 class Factory {
 
-    const DEFAULTS = [
-        'connection' => [
-            'platform' => null,
-        ],
-        'entities' => [],
-        'namingStrategy' => 'snakeCase',
-        'migrationsDir' => null,
-        'debugger' => null,
-    ];
+    private FactoryConfiguration $config;
 
-
-    /** @var array */
-    private array $config;
-
-    /** @var string */
     private ?string $cacheDir;
 
     /** @var callable */
     private $cacheStorageFactory;
 
-
-
-    public function __construct(array $config, ?string $cacheDir = null) {
-        $this->config = array_replace_recursive(self::DEFAULTS, $config);
+    public function __construct(FactoryConfiguration $config, ?string $cacheDir = null) {
+        $this->config = $config;
         $this->cacheDir = $cacheDir;
 
-        if ($this->config['debugger'] === null) {
-            $this->config['debugger'] = class_exists(IBarPanel::class);
+        if ($this->config->debugger === null) {
+            $this->config->debugger = class_exists(IBarPanel::class);
         }
     }
 
 
-    public function createConnection(Drivers\IDriver $driver, Drivers\IPlatform $platform) : Connection {
+    public function createConnection(Drivers\IDriver $driver, Drivers\IPlatform $platform): Connection {
         return new Connection($driver, $platform);
     }
 
-    public function createDriver() : Drivers\IDriver {
-        $options = $this->config['connection'];
+    public function createDriver(): Drivers\IDriver {
+        $options = $this->config->connection;
 
         if (empty($options['driver'])) {
             $options['driver'] = $options['platform'];
@@ -83,8 +77,8 @@ class Factory {
         }
     }
 
-    public function createPlatform() : Drivers\IPlatform {
-        $options = $this->config['connection'];
+    public function createPlatform(): Drivers\IPlatform {
+        $options = $this->config->connection;
 
         if (is_string($options['platform'])) {
             $platform = $options['platform'];
@@ -105,18 +99,18 @@ class Factory {
         }
     }
 
-    public function createEventDispatcher() : EventDispatcher {
+    public function createEventDispatcher(): EventDispatcher {
         return new EventDispatcher();
     }
 
     public function createEntityManager(
-        Connection $connection,
-        Mapper $mapper,
+        Connection        $connection,
+        Mapper            $mapper,
         Metadata\Provider $provider,
-        SQL\Translator $translator,
-        SQL\AST\Builder $astBuilder,
-        EventDispatcher $eventDispatcher
-    ) : EntityManager {
+        SQL\Translator    $translator,
+        SQL\AST\Builder   $astBuilder,
+        EventDispatcher   $eventDispatcher
+    ): EntityManager {
         return new EntityManager(
             $connection,
             $mapper,
@@ -133,16 +127,16 @@ class Factory {
         return new $class($entityManager, $meta);
     }
 
-    public function createMetadataCompiler(Metadata\INamingStrategy $namingStrategy) : Metadata\Compiler {
+    public function createMetadataCompiler(Metadata\INamingStrategy $namingStrategy): Metadata\Compiler {
         return new Metadata\Compiler($namingStrategy);
     }
 
-    public function createMetadataProvider(Metadata\Compiler $compiler, ?Cache\IStorage $cacheStorage = null) : Metadata\Provider {
-        return new Metadata\Provider($compiler, $cacheStorage, $this->config['entities']);
+    public function createMetadataProvider(Metadata\Compiler $compiler, ?Cache\IStorage $cacheStorage = null): Metadata\Provider {
+        return new Metadata\Provider($compiler, $cacheStorage, $this->config->entities);
     }
 
-    public function createNamingStrategy() : Metadata\INamingStrategy {
-        $strategy = $this->config['namingStrategy'];
+    public function createNamingStrategy(): Metadata\INamingStrategy {
+        $strategy = $this->config->namingStrategy;
 
         if (is_string($strategy)) {
             if (!class_exists($strategy) && class_exists($tmp = 'PORM\\Metadata\\NamingStrategy\\' . ucfirst($strategy))) {
@@ -159,17 +153,17 @@ class Factory {
         }
     }
 
-    public function createMapper(Drivers\IPlatform $platform) : Mapper {
+    public function createMapper(Drivers\IPlatform $platform): Mapper {
         return new Mapper($platform);
     }
 
     public function createTranslator(
-        SQL\AST\Parser $parser,
+        SQL\AST\Parser    $parser,
         Metadata\Provider $provider,
         Drivers\IPlatform $platform,
-        EventDispatcher $eventDispatcher,
-        ?Cache\IStorage $cacheStorage = null
-    ) : SQL\Translator {
+        EventDispatcher   $eventDispatcher,
+        ?Cache\IStorage   $cacheStorage = null
+    ): SQL\Translator {
         return new SQL\Translator(
             $parser,
             $provider,
@@ -179,43 +173,43 @@ class Factory {
         );
     }
 
-    public function createASTParser() : SQL\AST\Parser {
+    public function createASTParser(): SQL\AST\Parser {
         return new SQL\AST\Parser();
     }
 
-    public function createASTBuilder(Metadata\Provider $provider, SQL\AST\Parser $parser, Drivers\IPlatform $platform) : SQL\AST\Builder {
+    public function createASTBuilder(Metadata\Provider $provider, SQL\AST\Parser $parser, Drivers\IPlatform $platform): SQL\AST\Builder {
         return new SQL\AST\Builder($provider, $parser, $platform);
     }
 
-    public function createMigrationResolver(Drivers\IDriver $driver, Drivers\IPlatform $platform) : Migrations\Resolver {
-        return new Migrations\Resolver($driver, $platform, $this->config['migrationsDir']);
+    public function createMigrationResolver(Drivers\IDriver $driver, Drivers\IPlatform $platform): Migrations\Resolver {
+        return new Migrations\Resolver($driver, $platform, $this->config->migrationsDir);
     }
 
-    public function createMigrationRunner(Drivers\IDriver $driver) : Migrations\Runner {
+    public function createMigrationRunner(Drivers\IDriver $driver): Migrations\Runner {
         return new Migrations\Runner($driver);
     }
 
-    public function createRunMigrationsCommand(Migrations\Resolver $resolver, Migrations\Runner $runner) : Command\RunMigrationsCommand {
+    public function createRunMigrationsCommand(Migrations\Resolver $resolver, Migrations\Runner $runner): Command\RunMigrationsCommand {
         return new Command\RunMigrationsCommand($resolver, $runner);
     }
 
-    public function createTracyBarPanel() : Bridges\Tracy\BarPanel {
+    public function createTracyBarPanel(): Bridges\Tracy\BarPanel {
         return new Bridges\Tracy\BarPanel();
     }
 
-    public function createTracyDebuggerPanel() : Bridges\Tracy\DebuggerPanel {
+    public function createTracyDebuggerPanel(): Bridges\Tracy\DebuggerPanel {
         return new Bridges\Tracy\DebuggerPanel();
     }
 
-    public function createCacheStorage(string $namespace) : ?Cache\IStorage {
+    public function createCacheStorage(string $namespace): ?Cache\IStorage {
         return call_user_func_array($this->getCacheStorageFactory(), func_get_args());
     }
 
-    public function setCacheStorageFactory(callable $factory) : void {
+    public function setCacheStorageFactory(callable $factory): void {
         $this->cacheStorageFactory = $factory;
     }
 
-    private function getCacheStorageFactory() : callable {
+    private function getCacheStorageFactory(): callable {
         if (!isset($this->cacheStorageFactory)) {
             $this->cacheStorageFactory = \Closure::fromCallable([$this, 'createDefaultCacheStorage']);
         }
@@ -223,7 +217,7 @@ class Factory {
         return $this->cacheStorageFactory;
     }
 
-    private function createDefaultCacheStorage(string $namespace, ?callable $serializer = null) : ?Cache\IStorage {
+    private function createDefaultCacheStorage(string $namespace, ?callable $serializer = null): ?Cache\IStorage {
         return $this->cacheDir ? new Cache\Storage\PhpStorage($this->cacheDir, $namespace, $serializer) : null;
     }
 

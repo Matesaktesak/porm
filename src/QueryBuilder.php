@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PORM;
 
+use PORM\Exceptions\InvalidQueryException;
 use PORM\Metadata\Entity;
 use PORM\SQL\AST\Node as AST;
 
@@ -14,26 +15,29 @@ class QueryBuilder {
 
     private SQL\AST\Builder $astBuilder;
 
-    /** @var Entity|QueryBuilder|string */
-    private string|null|QueryBuilder|Entity $from = null;
+    private string|null|QueryBuilder|Entity $from;
 
     private ?string $alias;
 
-    private $fields = null;
+
+    /**
+     * @var string[]|null
+     */
+    private ?array $fields = null;
 
     private array $join = [];
 
-    private $where = null;
+    private ?array $where = null;
 
     private array $groupBy = [];
 
-    private $having = null;
+    private ?array $having = null;
 
-    private $orderBy = null;
+    private ?array $orderBy = null;
 
-    private $limit = null;
+    private ?int $limit = null;
 
-    private $offset = null;
+    private ?int $offset = null;
 
     private array $union = [];
 
@@ -46,6 +50,10 @@ class QueryBuilder {
     }
 
 
+    /**
+     * @param string[] $fields
+     * @return $this
+     */
     public function select(array $fields) : self {
         $this->fields = $fields;
         return $this;
@@ -128,17 +136,26 @@ class QueryBuilder {
         return $this;
     }
 
+    /**
+     * @throws InvalidQueryException
+     */
     public function union(QueryBuilder $builder) : self {
         $this->union[] = new AST\UnionClause($builder->getAST());
         return $this;
     }
 
+    /**
+     * @throws InvalidQueryException
+     */
     public function unionAll(QueryBuilder $builder) : self {
         $this->union[] = new AST\UnionClause($builder->getAST(), true);
         return $this;
     }
 
 
+    /**
+     * @throws InvalidQueryException
+     */
     public function getAST() : AST\SelectQuery {
         $query = new AST\SelectQuery();
 
@@ -185,6 +202,9 @@ class QueryBuilder {
     }
 
 
+    /**
+     * @throws InvalidQueryException
+     */
     public function getQuery() : SQL\Query {
         return $this->translator->compile($this->getAST());
     }

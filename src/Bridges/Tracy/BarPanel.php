@@ -13,12 +13,7 @@ class BarPanel implements Tracy\IBarPanel {
 
     /** @var Event[] */
     private array $events = [];
-
-
-    /** @var string */
     private ?string $pormPath = null;
-
-    /** @var int */
     private ?int $pormPathLen = null;
 
 

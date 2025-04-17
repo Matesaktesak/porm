@@ -7,17 +7,20 @@ namespace PORM\Bridges\Tracy;
 
 class Helpers {
 
-    final private function __construct() {}
+    final private function __construct() {
+    }
 
-    public static function formatSql(string $query) : string {
-        return strpos($query, "\n") !== false ? $query : preg_replace_callback(
+    public static function formatSql(string $query): string {
+        return str_contains($query, "\n") ? $query : preg_replace_callback(
             '/(?<=[\h(+-])((?<!^)SELECT|(EXTRACT\h*\(\h*\S+\h+)?FROM|(?:(?:LEFT|RIGHT|INNER|OUTER)\h+)*JOIN|WHERE|SET|GROUP\h+BY|ORDER\h+BY|INTO|VALUES|UNION)(?=\h)/i',
-            function(array $m) : string { return !isset($m[2]) ? "\n" . $m[1] : $m[1]; },
+            function (array $m): string {
+                return !isset($m[2]) ? "\n" . $m[1] : $m[1];
+            },
             $query
         );
     }
 
-    public static function formatTime(?float $duration = null) : string {
+    public static function formatTime(?float $duration = null): string {
         if ($duration !== null) {
             return sprintf('%.3f ms', $duration * 1000);
         } else {

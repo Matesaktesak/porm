@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace PORM\Bridges\Tracy;
 
 use PORM\Exceptions\QueryException;

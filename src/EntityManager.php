@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace PORM;
 
 
+use PORM\Exceptions\InvalidQueryException;
+use PORM\Exceptions\NoResultException;
 use PORM\Metadata\Provider;
+use ReflectionException;
 
 class EntityManager {
 
@@ -24,12 +27,12 @@ class EntityManager {
     private array $identityMap = [];
 
     public function __construct(
-        Connection $connection,
-        Mapper $mapper,
+        Connection        $connection,
+        Mapper            $mapper,
         Metadata\Provider $metadataProvider,
-        SQL\Translator $translator,
-        SQL\AST\Builder $astBuilder,
-        EventDispatcher $eventDispatcher
+        SQL\Translator    $translator,
+        SQL\AST\Builder   $astBuilder,
+        EventDispatcher   $eventDispatcher
     ) {
         $this->connection = $connection;
         $this->mapper = $mapper;
@@ -40,11 +43,16 @@ class EntityManager {
     }
 
 
-    public function getEntityMetadata(string $entityClass) : Metadata\Entity {
+    public function getEntityMetadata(string $entityClass): Metadata\Entity {
         return $this->metadataProvider->get($entityClass);
     }
 
 
+    /**
+     * @throws NoResultException
+     * @throws InvalidQueryException
+     * @throws ReflectionException
+     */
     public function get($entity, $id, bool $need = false) {
         $meta = $this->normalizeMeta($entity);
         $ast = $this->astBuilder->buildSelectQuery(
@@ -67,13 +75,12 @@ class EntityManager {
     }
 
 
-
-    public function find($entity, ?string $alias = null) : Lookup {
+    public function find($entity, ?string $alias = null): Lookup {
         return new Lookup($this, $this->normalizeMeta($entity), $alias);
     }
 
 
-    public function persist($entity, $object) : void {
+    public function persist($entity, $object): void {
         $meta = $this->normalizeMeta($entity);
 
         if ($meta->isReadonly()) {
@@ -94,7 +101,9 @@ class EntityManager {
             }
         }
 
-        $id = array_filter($id, function($v) { return $v !== null; });
+        $id = array_filter($id, function ($v) {
+            return $v !== null;
+        });
 
         if (!empty($id) && !$meta->hasGeneratedProperty() && !isset($this->identityMap[$meta->getEntityClass()][$hash])) {
             $data = $id + $data;
@@ -138,7 +147,7 @@ class EntityManager {
 
                 if ($genProp) {
                     if ($platform->supportsReturningClause()) {
-                        $id = (int) $result->fetchSingle();
+                        $id = (int)$result->fetchSingle();
                     } else {
                         $id = $driver->getLastGeneratedValue($genPropInfo['generator']);
                     }
@@ -182,7 +191,7 @@ class EntityManager {
         }
     }
 
-    public function remove($entity, $object) : self {
+    public function remove($entity, $object): self {
         $meta = $this->normalizeMeta($entity);
 
         if ($meta->isReadonly()) {
@@ -219,22 +228,22 @@ class EntityManager {
     }
 
 
-    public function beginTransaction() : self {
+    public function beginTransaction(): self {
         $this->connection->beginTransaction();
         return $this;
     }
 
-    public function commit() : self {
+    public function commit(): self {
         $this->connection->commit();
         return $this;
     }
 
-    public function rollback() : self {
+    public function rollback(): self {
         $this->connection->rollback();
         return $this;
     }
 
-    public function transactional(callable $callback, ... $args) {
+    public function transactional(callable $callback, ...$args) {
         try {
             $this->beginTransaction();
             $result = call_user_func_array($callback, $args);
@@ -247,17 +256,17 @@ class EntityManager {
     }
 
 
-    public function createQueryBuilder($entity = null, ?string $alias = null) : QueryBuilder {
+    public function createQueryBuilder($entity = null, ?string $alias = null): QueryBuilder {
         return new QueryBuilder($this->translator, $this->astBuilder, $entity ? $this->normalizeMeta($entity) : null, $alias);
     }
 
 
-    public function expr(string $sql, ?array $parameters = null) : SQL\Expression {
+    public function expr(string $sql, ?array $parameters = null): SQL\Expression {
         return new SQL\Expression($sql, $parameters);
     }
 
 
-    public function query(string $query, ?array $parameters = null) : ?SQL\ResultSet {
+    public function query(string $query, ?array $parameters = null): ?SQL\ResultSet {
         $query = $this->translator->translate($query);
 
         if ($parameters) {
@@ -267,7 +276,7 @@ class EntityManager {
         return $this->execute($query);
     }
 
-    public function execute(SQL\Query $query, ?Metadata\Entity $entity = null) : ?SQL\ResultSet {
+    public function execute(SQL\Query $query, ?Metadata\Entity $entity = null): ?SQL\ResultSet {
         $result = $this->connection->query($query->getSql(), $this->mapper->convertToDb($query->getParameters(), $query->getParameterMap()));
 
         if ($result) {
@@ -282,12 +291,15 @@ class EntityManager {
     }
 
 
-    public function nativeQuery(string $query, ?array $parameters = null) : ?SQL\ResultSet {
+    public function nativeQuery(string $query, ?array $parameters = null): ?SQL\ResultSet {
         return $this->connection->query($query, $parameters ? $this->mapper->convertToDb($parameters) : null);
     }
 
 
-    public function hydrateEntity(Metadata\Entity $meta, array $data, ?string $resultId = null) : object {
+    /**
+     * @throws ReflectionException
+     */
+    public function hydrateEntity(Metadata\Entity $meta, array $data, ?string $resultId = null): object {
         $id = $this->mapper->extractRawIdentifier($meta, $data);
         $hash = implode('|', $id);
         $class = $meta->getEntityClass();
@@ -323,13 +335,13 @@ class EntityManager {
     }
 
 
-    public function isAttached(Metadata\Entity $meta, $entity) : bool {
+    public function isAttached(Metadata\Entity $meta, $entity): bool {
         $id = $this->mapper->extractIdentifier($meta, $entity);
         $hash = implode('|', $id);
         return isset($this->identityMap[$meta->getEntityClass()][$hash]);
     }
 
-    public function attach(Metadata\Entity $meta, $entity) : void {
+    public function attach(Metadata\Entity $meta, $entity): void {
         $id = $this->mapper->extractIdentifier($meta, $entity);
         $hash = implode('|', $id);
         $class = $meta->getEntityClass();
@@ -347,14 +359,14 @@ class EntityManager {
         }
     }
 
-    public function detach(Metadata\Entity $meta, $entity) : void {
+    public function detach(Metadata\Entity $meta, $entity): void {
         $id = $this->mapper->extractIdentifier($meta, $entity);
         $hash = implode('|', $id);
         unset($this->identityMap[$meta->getEntityClass()][$hash]);
     }
 
 
-    public function loadRelations(Metadata\Entity $meta, $entities, string ... $relations) : void {
+    public function loadRelations(Metadata\Entity $meta, $entities, string ...$relations): void {
         if (!($entities = $this->normalizeEntities($entities))) {
             return;
         }
@@ -376,7 +388,7 @@ class EntityManager {
     }
 
 
-    public function loadAggregate(Metadata\Entity $meta, $entities, string ... $properties) : void {
+    public function loadAggregate(Metadata\Entity $meta, $entities, string ...$properties): void {
         if (!($entities = $this->normalizeEntities($entities))) {
             return;
         }
@@ -391,7 +403,7 @@ class EntityManager {
     }
 
 
-    private function normalizeMeta($entity) : Metadata\Entity {
+    private function normalizeMeta($entity): Metadata\Entity {
         if (is_string($entity)) {
             return $this->metadataProvider->get($entity);
         } else if ($entity instanceof Metadata\Entity) {
@@ -402,7 +414,7 @@ class EntityManager {
     }
 
 
-    private function normalizeEntities($entities) {
+    private function normalizeEntities($entities): array {
         if ($entities instanceof \Traversable) {
             $entities = iterator_to_array($entities, false);
         } else if (!is_array($entities)) {
@@ -413,7 +425,10 @@ class EntityManager {
     }
 
 
-    private function persistRelations(Metadata\Entity $meta, object $object, bool $new) : bool {
+    /**
+     * @throws InvalidQueryException
+     */
+    private function persistRelations(Metadata\Entity $meta, object $object, bool $new): bool {
         if ($prop = $meta->getSingleIdentifierProperty(false)) {
             $localId = $meta->getReflection($prop)->getValue($object);
         } else {
@@ -430,7 +445,7 @@ class EntityManager {
                 $remoteId = $remote->getReflection($remote->getSingleIdentifierProperty());
 
                 if ($add = ($new ? $coll->toArray() : $coll->getAddedEntries())) {
-                    $add = array_map(function(object $entity) use ($info, $localId, $remoteId) : array {
+                    $add = array_map(function (object $entity) use ($info, $localId, $remoteId): array {
                         return [
                             $info['via']['localColumn'] => $localId,
                             $info['via']['remoteColumn'] => $remoteId->getValue($entity),
@@ -444,7 +459,7 @@ class EntityManager {
                 }
 
                 if ($remove = $coll->getRemovedEntries()) {
-                    $remove = array_map(function(object $entity) use ($remoteId) {
+                    $remove = array_map(function (object $entity) use ($remoteId) {
                         return $remoteId->getValue($entity);
                     }, $remove);
 
@@ -464,7 +479,10 @@ class EntityManager {
     }
 
 
-    private function loadRelation(Metadata\Entity $meta, array $entities, string $relation) : array {
+    /**
+     * @throws InvalidQueryException
+     */
+    private function loadRelation(Metadata\Entity $meta, array $entities, string $relation): array {
         $info = $meta->getRelationInfo($relation);
         $target = $this->metadataProvider->get($info['target']);
         $builder = $this->createQueryBuilder($target, '_r');
@@ -505,7 +523,7 @@ class EntityManager {
             if (!empty($info['via'])) {
                 $builder->select(
                     $target->getProperties()
-                    + [ '_xid' => '_x.' . $info['via']['localColumn'] ]
+                    + ['_xid' => '_x.' . $info['via']['localColumn']]
                 );
 
                 $builder->innerJoin($info['via']['table'], '_x', [
@@ -567,7 +585,10 @@ class EntityManager {
     }
 
 
-    private function loadAggregation(Metadata\Entity $meta, array $entities, string $prop) : void {
+    /**
+     * @throws InvalidQueryException
+     */
+    private function loadAggregation(Metadata\Entity $meta, array $entities, string $prop): void {
         $info = $meta->getAggregatePropertyInfo($prop);
         $relation = $meta->getRelationInfo($info['relation']);
         $target = $this->metadataProvider->get($relation['target']);
