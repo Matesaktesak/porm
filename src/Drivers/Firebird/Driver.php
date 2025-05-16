@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace PORM\Drivers\Firebird;
 
+use PDO;
+use PDOException;
 use PORM\Exceptions\ConnectionException;
 use PORM\Exceptions\ConstraintViolationException;
 use PORM\Exceptions\DriverException;
@@ -29,8 +31,7 @@ class Driver implements IDriver {
     /** @var array */
     private array $options;
 
-    /** @var resource */
-    private $connection;
+    private ?PDO $connection = null;
 
     /** @var resource */
     private $transaction;
@@ -47,103 +48,100 @@ class Driver implements IDriver {
         }
     }
 
-    public function isConnected() : bool {
-        return is_resource($this->connection);
+    public function isConnected(): bool {
+        return $this->connection instanceof PDO;
     }
 
-    public function connect() : void {
+    /**
+     * @throws ConnectionException
+     */
+    public function connect(): void {
         if (!$this->connection) {
-            $connection = @ibase_connect(
-                $this->options['database'],
-                $this->options['username'],
-                $this->options['password'],
-                $this->options['charset'],
-                $this->options['buffers']
-            );
-
-            if (!is_resource($connection)) {
-                throw new ConnectionException(ibase_errmsg(), ibase_errcode());
-            } else {
-                $this->connection = $connection;
+            try {
+                $this->connection = PDO::connect(
+                    "firebird:dbname=localhost:{$this->options['database']};charset={$this->options['charset']}",
+                    $this->options['username'],
+                    $this->options['password'],
+//                $this->options['buffers']
+                );
+            } catch (PDOException $e) {
+                throw new ConnectionException($this->connection->errorInfo()[2], $connection->errorInfo()[1]);
             }
         }
     }
 
-    public function disconnect() : void {
-        if ($this->connection) {
-            ibase_close($this->connection);
-            $this->connection = null;
-        }
+    public function disconnect(): void {
+        $this->connection = null;
     }
 
-    public function getLastGeneratedValue(string $name) : int {
-        return (int) ibase_gen_id($name, 0, $this->connection);
+    public function getLastGeneratedValue(string $name): int {
+        return (int)fbird_gen_id($name, 0, $this->connection);
     }
 
 
-    public function query(string $query, ?array $parameters = null) : ?ResultSet {
+    public function query(string $query, ?array $parameters = null): ?ResultSet {
         $this->connect();
 
         if (empty($parameters)) {
-            $result = @ibase_query($this->connection, $query);
+            $result = $this->connection->query($query);
         } else {
-            $stmt = @ibase_prepare($query);
+            $stmt = $this->connection->prepare($query);
 
             if ($stmt === false) {
                 throw $this->createQueryException($query, $parameters);
             }
 
-            $result = @ibase_execute($stmt, ... $parameters);
-            ibase_free_query($stmt);
+            $result = $stmt->execute($parameters);
+            $stmt = null;
         }
 
         if ($result === false) {
             throw $this->createQueryException($query, $parameters);
         } else {
-            return is_resource($result) ? new ResultSet($this, $result) : null;
+            return new ResultSet($this, $result);
         }
     }
 
-    public function getAffectedRows() : int {
-        return ibase_affected_rows($this->connection);
+    public function getAffectedRows(): int {
+        return fbird_affected_rows($this->connection);
     }
 
-    public function fetchRow($resource) : ?array {
-        $result = @ibase_fetch_assoc($resource, IBASE_TEXT);
+    public function fetchRow($resource): ?array {
+        $result = @fbird_fetch_assoc($resource, fbird_TEXT);
 
-        if ($code = ibase_errcode()) {
-            throw new DriverException(ibase_errmsg(), $code);
+        if ($code = fbird_errcode()) {
+            throw new DriverException(fbird_errmsg(), $code);
         } else {
             return $result === false ? null : $result;
         }
     }
 
-    public function freeResult($resource) : void {
-        ibase_free_result($resource);
+    public function freeResult($resource): void {
+        fbird_free_result($resource);
     }
 
 
-    public function inTransaction() : bool {
+    public function inTransaction(): bool {
         return $this->transactionDepth > 0;
     }
 
-    public function beginTransaction() : void {
+    public function beginTransaction(): void {
         $this->connect();
 
         if ($this->inTransaction()) {
             $this->query(sprintf('SAVEPOINT PORM_%d', $this->transactionDepth));
         } else {
-            $this->transaction = ibase_trans($this->connection);
+            $this->transaction = fbird_trans($this->connection);
         }
 
         $this->transactionDepth++;
     }
 
-    public function commit() : void {
+    public function commit(): void {
         if (!$this->inTransaction()) {
             throw new DriverException("No active transaction to commit");
         } else if (--$this->transactionDepth === 0) {
-            if (!ibase_commit($this->transaction)) {
+            if (!fbird_commit($this->transaction)) {
                 throw new DriverException("Unable to commit transaction");
             }
 
@@ -151,13 +149,13 @@ class Driver implements IDriver {
         }
     }
 
-    public function rollback() : void {
+    public function rollback(): void {
         if (!$this->inTransaction()) {
             throw new DriverException("No active transaction to roll back");
         } else if ($this->transactionDepth > 1) {
             $this->query(sprintf('ROLLBACK TO SAVEPOINT PORM_%d', --$this->transactionDepth));
         } else {
-            if (!ibase_rollback($this->transaction)) {
+            if (!fbird_rollback($this->transaction)) {
                 throw new DriverException("Unable to roll back transaction");
             }
 
@@ -167,10 +165,9 @@ class Driver implements IDriver {
     }
 
 
-
-    private function createQueryException(string $query, ?array $parameters = null) : QueryException {
-        $msg = ibase_errmsg();
-        $code = ibase_errcode() ?: -1;
+    private function createQueryException(string $query, ?array $parameters = null): QueryException {
+        $msg = fbird_errmsg();
+        $code = fbird_errcode() ?: -1;
 
         if (!$msg) {
             if ($err = error_get_last()) {

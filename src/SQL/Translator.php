@@ -87,7 +87,7 @@ class Translator {
 
     private function getASTVisitors(): array {
         if ($this->visitors === null) {
-            $this->visitors[] = [
+            $this->visitors = [
                 new AST\Visitor\EntityResolverVisitor($this->metadataProvider),
                 new AST\Visitor\AssignmentJoiningVisitor($this->metadataProvider),
                 new AST\Visitor\SubqueryMappingVisitor(),
@@ -96,9 +96,7 @@ class Translator {
                 new AST\Visitor\ResultMappingVisitor(),
             ];
 
-            $this->visitors[] = [
-                new AST\Visitor\ParameterResolverVisitor(),
-            ];
+            $this->visitors[] = new AST\Visitor\ParameterResolverVisitor();
         }
 
         return $this->visitors;

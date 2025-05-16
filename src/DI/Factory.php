@@ -17,16 +17,6 @@ use PORM\Cache;
 use PORM\Command;
 use Tracy\IBarPanel;
 
-class FactoryConfiguration {
-    public array $connection = [
-        'platform' => null,
-    ];
-    public array $entities = [];
-    public string $namingStrategy = 'snakeCase';
-    public ?string $migrationsDir;
-    public ?bool $debugger;
-}
-
 class Factory {
 
     private FactoryConfiguration $config;

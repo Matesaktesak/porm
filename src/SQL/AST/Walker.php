@@ -22,8 +22,7 @@ class Walker {
 
     /** @var array<Node\Node|string> */
     private array $stack = [];
-
-
+    private bool $skip;
 
 
     public function addVisitor(IVisitor $visitor) : void {
@@ -41,7 +40,7 @@ class Walker {
         }
     }
 
-    public function apply(Node\Node $root, IVisitor ... $visitors) : void {
+    public function apply(Node\Node $root, IVisitor ...$visitors) : void {
         $contexts = new \SplObjectStorage();
         $map = [];
 

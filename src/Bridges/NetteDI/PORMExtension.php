@@ -6,18 +6,17 @@ namespace PORM\Bridges\NetteDI;
 
 use Composer\Autoload\ClassLoader;
 use Nette;
-use Nette\PhpGenerator;
+use Nette\DI\CompilerExtension;
 use Nette\DI\ContainerBuilder;
 use Nette\DI\Definitions\Statement;
+use Nette\PhpGenerator;
 use Nette\Schema\Expect;
 use PORM\DI\Factory;
 use PORM\DI\FactoryConfiguration;
 use PORM\Metadata;
 use PORM\SQL;
-use Nette\DI\CompilerExtension;
 use Symfony\Component\Console\Application;
 use Tracy\Debugger;
-
 
 class PORMExtension extends CompilerExtension {
 
@@ -32,7 +31,7 @@ class PORMExtension extends CompilerExtension {
     }
 
     public function getConfigSchema(): Nette\Schema\Schema {
-        return Expect::from(new FactoryConfiguration);
+        return Expect::from(new FactoryConfiguration());
     }
 
     public function loadConfiguration(): void {

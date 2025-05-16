@@ -3,17 +3,20 @@
     "type": "library",
     "license": "MIT",
     "description": "Yet another PHP ORM",
+    "version": "0.1.0",
     "require": {
-        "php": ">=8.2",
-        "nette/tokenizer": "^3.1",
-        "ext-pdo_firebird": "*",
-        "ext-zend-opcache": "*"
+        "php": ">=8.4",
+        "ext-zend-opcache": "*",
+        "nette/tokenizer": ">=3.1.1",
+        "nette/php-generator": ">=4.1.8"
     },
     "require-dev": {
-        "nette/di": "^3.2",
-        "tracy/tracy": "^2.10",
-        "nette/robot-loader": "^4.0",
-        "symfony/console": "^7.2"
+        "ext-pdo": "*",
+        "ext-pdo_firebird": "*",
+        "nette/di": ">=3.2.4",
+        "tracy/tracy": ">=2.10.10",
+        "nette/robot-loader": ">=4.0.3",
+        "symfony/console": ">=7.2.6"
     },
     "autoload": {
         "psr-4": {

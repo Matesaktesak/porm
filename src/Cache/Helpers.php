@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PORM\Cache;
 
+use Closure;
 use Nette\PhpGenerator;
 
 
@@ -13,8 +14,9 @@ class Helpers {
         static $dumper = null;
 
         if (!isset($dumper)) {
-            if (class_exists(PhpGenerator\Helpers::class)) {
-                $dumper = \Closure::fromCallable([PhpGenerator\Helpers::class, 'dump']);
+            if (class_exists(PhpGenerator\Dumper::class)) {
+                $dumperClass = new \Nette\PhpGenerator\Dumper;
+                $dumper = $dumperClass->dump(...);
             } else {
                 $dumper = function($value) { return var_export($value, true); };
             }
